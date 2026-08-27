@@ -23,8 +23,8 @@ class VideoPlayerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(playerControllerProvider(episode.id));
-    final controller = ref.read(playerControllerProvider(episode.id).notifier);
+    final state = ref.watch(playerControllerProvider(episode));
+    final controller = ref.read(playerControllerProvider(episode).notifier);
 
     return Scaffold(
       backgroundColor: Colors.black,

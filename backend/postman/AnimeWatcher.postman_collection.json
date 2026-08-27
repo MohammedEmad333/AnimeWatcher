@@ -1,0 +1,231 @@
+{
+  "info": {
+    "name": "AnimeWatcher API",
+    "description": "Auth, Favorites and Watch-History endpoints for the AnimeWatcher backend. Login/Register automatically capture {{jwt_token}}; all protected requests use it via collection-level Bearer auth. Set {{base_url}} in the environment (default http://localhost:8000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{jwt_token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "jwt_token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const token = res && res.data ? res.data.token : undefined;",
+                  "if (token) {",
+                  "  pm.environment.set('jwt_token', token);",
+                  "  pm.collectionVariables.set('jwt_token', token);",
+                  "}",
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('token captured', () => pm.expect(token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"name\": \"Aya\",\n  \"email\": \"aya@example.com\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register.php"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "const token = res && res.data ? res.data.token : undefined;",
+                  "if (token) {",
+                  "  pm.environment.set('jwt_token', token);",
+                  "  pm.collectionVariables.set('jwt_token', token);",
+                  "}",
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token captured', () => pm.expect(token).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"email\": \"aya@example.com\",\n  \"password\": \"secret123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login.php"]
+            }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me.php"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout.php"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Favorites",
+      "item": [
+        {
+          "name": "List favorites",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/favorites/index.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "favorites", "index.php"]
+            }
+          }
+        },
+        {
+          "name": "Add favorite",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"anime_id\": \"1\",\n  \"title\": \"Cowboy Bebop\",\n  \"cover_image\": \"https://cdn.example.com/covers/1.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/favorites/index.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "favorites", "index.php"]
+            }
+          }
+        },
+        {
+          "name": "Remove favorite",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"anime_id\": \"1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/favorites/index.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "favorites", "index.php"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "History",
+      "item": [
+        {
+          "name": "List history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/history/index.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "history", "index.php"]
+            }
+          }
+        },
+        {
+          "name": "Get resume position",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/history/index.php?anime_id=1&episode_id=1-1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "history", "index.php"],
+              "query": [
+                { "key": "anime_id", "value": "1" },
+                { "key": "episode_id", "value": "1-1" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Save progress",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "options": { "raw": { "language": "json" } },
+              "raw": "{\n  \"anime_id\": \"1\",\n  \"episode_id\": \"1-1\",\n  \"playback_time\": 125\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/history/index.php",
+              "host": ["{{base_url}}"],
+              "path": ["api", "history", "index.php"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

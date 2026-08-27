@@ -8,6 +8,8 @@ require_once dirname(__DIR__, 2) . '/middleware/auth_middleware.php';
  * /api/history/index.php   (protected)
  *
  *   GET  → list the user's watch history (most recently updated first)
+ *   GET ?anime_id=..&episode_id=..
+ *        → resume position for one episode: { playback_time } (0 if none)
  *   POST → upsert resume position
  *          { "anime_id": "...", "episode_id": "...", "playback_time": 123 }
  *
@@ -20,6 +22,32 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 try {
     if ($method === 'GET') {
+        $animeId   = trim((string) ($_GET['anime_id'] ?? ''));
+        $episodeId = trim((string) ($_GET['episode_id'] ?? ''));
+
+        // Single-episode resume lookup.
+        if ($animeId !== '' && $episodeId !== '') {
+            $stmt = db()->prepare(
+                'SELECT playback_time, updated_at
+                   FROM watch_history
+                  WHERE user_id = :uid AND anime_id = :aid AND episode_id = :eid
+                  LIMIT 1'
+            );
+            $stmt->execute([
+                ':uid' => $userId,
+                ':aid' => $animeId,
+                ':eid' => $episodeId,
+            ]);
+            $row = $stmt->fetch();
+            Response::success([
+                'anime_id'      => $animeId,
+                'episode_id'    => $episodeId,
+                'playback_time' => $row ? (int) $row['playback_time'] : 0,
+                'updated_at'    => $row['updated_at'] ?? null,
+            ]);
+        }
+
+        // Full history list.
         $stmt = db()->prepare(
             'SELECT anime_id, episode_id, playback_time, updated_at
                FROM watch_history

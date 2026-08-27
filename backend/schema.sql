@@ -32,10 +32,14 @@ CREATE TABLE IF NOT EXISTS users (
 --  Deleting a user cascades to their favorites.
 -- ----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS favorites (
-    id          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    user_id     BIGINT UNSIGNED NOT NULL,
-    anime_id    VARCHAR(64)     NOT NULL,
-    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id      BIGINT UNSIGNED NOT NULL,
+    anime_id     VARCHAR(64)     NOT NULL,
+    -- Denormalized display metadata so the grid renders instantly without a
+    -- second lookup against the catalog / Jikan API.
+    title        VARCHAR(255)    NULL,
+    cover_image  VARCHAR(512)    NULL,
+    created_at   TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     UNIQUE KEY uq_favorites_user_anime (user_id, anime_id),
     KEY idx_favorites_user (user_id),

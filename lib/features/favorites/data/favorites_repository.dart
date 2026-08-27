@@ -36,7 +36,8 @@ class FavoritesRepository {
 
   Future<void> add(Anime anime) {
     return _guard(() async {
-      await _remote.addFavorite(anime.id);
+      // Send the full anime so the backend can store title + cover_image.
+      await _remote.addFavorite(anime);
       await _local.add(anime);
     });
   }

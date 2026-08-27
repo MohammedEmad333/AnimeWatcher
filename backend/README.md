@@ -90,9 +90,10 @@ Auth success payload: `{ "token": "<jwt>", "user": { "id", "name", "email" } }`.
 | POST   | `/api/auth/logout.php`      | ✔    | — |
 | GET    | `/api/auth/me.php`          | ✔    | — |
 | GET    | `/api/favorites/index.php`  | ✔    | — |
-| POST   | `/api/favorites/index.php`  | ✔    | `{ anime_id }` |
+| POST   | `/api/favorites/index.php`  | ✔    | `{ anime_id, title, cover_image }` |
 | DELETE | `/api/favorites/index.php`  | ✔    | `{ anime_id }` |
-| GET    | `/api/history/index.php`    | ✔    | — |
+| GET    | `/api/history/index.php`    | ✔    | — (full history list) |
+| GET    | `/api/history/index.php?anime_id=..&episode_id=..` | ✔ | — (resume position) |
 | POST   | `/api/history/index.php`    | ✔    | `{ anime_id, episode_id, playback_time }` |
 
 `✔` = requires `Authorization: Bearer <jwt>`.
@@ -115,21 +116,13 @@ Recommended hardening for production: per-IP rate limiting on auth routes,
 HTTPS only, a token denylist (`jti`) for true logout/rotation, and a shorter
 access-token TTL paired with refresh tokens.
 
-## Design note — favorites metadata
+## Favorites metadata (denormalized)
 
-Per the requested schema, `favorites` stores only the external `anime_id`. So
-`GET /favorites` returns `[{ anime_id, created_at }]`. The Flutter client's
-Favorites grid renders full cards (title/cover), so it must **hydrate** each id
-from the catalog endpoints, **or** you can denormalize a few display columns
-into the table:
+`favorites` stores `title` + `cover_image` alongside `anime_id`, so
+`GET /favorites` returns ready-to-render cards
+(`[{ anime_id, title, cover_image, created_at }]`) with **no** second
+catalog/Jikan lookup. `POST /favorites` accepts `{ anime_id, title,
+cover_image }` and UPSERTs the metadata.
 
-```sql
-ALTER TABLE favorites
-  ADD COLUMN title      VARCHAR(255) NULL,
-  ADD COLUMN cover_url  VARCHAR(512) NULL,
-  ADD COLUMN rating     DECIMAL(3,1) NULL DEFAULT 0.0;
-```
-
-Then have `POST /favorites` accept and store those fields, and `GET /favorites`
-return them directly as anime cards. This is a deliberate tradeoff left to you
-rather than silently altering the specified schema.
+Existing databases: apply `migrations/001_favorites_add_metadata.sql`. Fresh
+installs already include the columns via `schema.sql`.

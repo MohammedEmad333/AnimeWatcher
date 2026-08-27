@@ -53,8 +53,14 @@ class ApiConstants {
   // ---------------------------------------------------------------------------
   // Favorites endpoints (cloud, authenticated)
   // ---------------------------------------------------------------------------
+  // The backend exposes a single collection endpoint; the anime id (and, for
+  // add, the denormalized title/cover) travel in the JSON body.
   static const String favorites = '/favorites';
 
-  /// Add / remove a single favorite: `/favorites/{animeId}`.
-  static String favorite(String animeId) => '/favorites/$animeId';
+  // ---------------------------------------------------------------------------
+  // Watch-history endpoints (cloud, authenticated)
+  // ---------------------------------------------------------------------------
+  // GET  /history?anime_id=..&episode_id=..  → resume position
+  // POST /history                            → upsert playback_time
+  static const String history = '/history';
 }

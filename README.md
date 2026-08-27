@@ -159,6 +159,8 @@ Point the app at your backend by editing `ApiConstants.baseUrl` in
 | `POST /auth/register`          | `{ token, user }` |
 | `POST /auth/logout`            | Invalidate session (authenticated) |
 | `GET /auth/me`                 | Current user (authenticated) |
-| `GET /favorites`               | User's saved anime (authenticated) |
-| `POST /favorites/{animeId}`    | Add favorite (authenticated) |
-| `DELETE /favorites/{animeId}`  | Remove favorite (authenticated) |
+| `GET /favorites`               | User's saved anime cards (authenticated) |
+| `POST /favorites`              | Add favorite `{ anime_id, title, cover_image }` (authenticated) |
+| `DELETE /favorites`            | Remove favorite `{ anime_id }` (authenticated) |
+| `GET /history?anime_id=..&episode_id=..` | Resume position (authenticated) |
+| `POST /history`                | Save `{ anime_id, episode_id, playback_time }` (authenticated) |
