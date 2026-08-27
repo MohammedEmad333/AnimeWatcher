@@ -1,0 +1,9 @@
+# Secrets — never commit
+.env
+
+# Composer (if you opt into firebase/php-jwt)
+/vendor/
+composer.lock
+
+# Logs
+*.log

@@ -22,9 +22,9 @@ class AuthRemoteDataSource {
       data: {'email': email, 'password': password},
       options: AuthInterceptor.skipAuth(),
     );
-    // Pass the raw body: AuthResult.fromJson understands both the flat
-    // `{ token, user }` and the enveloped `{ access_token, data }` shapes.
-    return AuthResult.fromJson(_asAuthJson(data));
+    // Backend envelope is `{ success, data: { token, user } }`; unwrap `data`
+    // then let AuthResult.fromJson read the `token` + `user` inside.
+    return AuthResult.fromJson(_unwrap(data));
   }
 
   Future<AuthResult> register({
@@ -37,7 +37,7 @@ class AuthRemoteDataSource {
       data: {'name': name, 'email': email, 'password': password},
       options: AuthInterceptor.skipAuth(),
     );
-    return AuthResult.fromJson(_asAuthJson(data));
+    return AuthResult.fromJson(_unwrap(data));
   }
 
   /// Tells the backend to invalidate the current session. Best-effort: the
@@ -48,17 +48,13 @@ class AuthRemoteDataSource {
 
   Future<AuthUser> getCurrentUser() async {
     final data = await _client.get(ApiConstants.currentUser);
-    return AuthUser.fromJson(_asMap(data));
+    return AuthUser.fromJson(_unwrap(data));
   }
 
-  /// For `/auth/me`: unwrap a `{ data: {...} }` envelope to the user object.
-  Map<String, dynamic> _asMap(dynamic data) {
+  /// Unwraps the standard `{ success, data: {...} }` response envelope to the
+  /// inner object (tolerating a bare object if `data` is absent).
+  Map<String, dynamic> _unwrap(dynamic data) {
     final raw = data is Map && data['data'] != null ? data['data'] : data;
     return raw is Map ? raw.cast<String, dynamic>() : <String, dynamic>{};
   }
-
-  /// For login / register: return the body as-is (do NOT unwrap `data`, since
-  /// the token lives at the top level alongside it).
-  Map<String, dynamic> _asAuthJson(dynamic data) =>
-      data is Map ? data.cast<String, dynamic>() : <String, dynamic>{};
 }

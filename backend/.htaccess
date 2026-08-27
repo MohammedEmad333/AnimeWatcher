@@ -1,0 +1,14 @@
+# Ensure the Authorization header reaches PHP (Apache often strips it).
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
+
+# Alternative for some CGI/FastCGI setups:
+SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
+# Never serve the environment file.
+<Files ".env">
+    Require all denied
+</Files>
