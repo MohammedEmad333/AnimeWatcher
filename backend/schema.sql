@@ -3,11 +3,11 @@
 --  Run:  mysql -u root -p < schema.sql
 -- ============================================================================
 
-CREATE DATABASE IF NOT EXISTS anime_watcher
+CREATE DATABASE IF NOT EXISTS animewatcher_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
-USE anime_watcher;
+USE animewatcher_db;
 
 -- ----------------------------------------------------------------------------
 --  users
