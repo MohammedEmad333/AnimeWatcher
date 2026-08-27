@@ -9,12 +9,18 @@ class StreamLink extends Equatable {
   const StreamLink({
     required this.url,
     required this.format,
+    this.server = 'Default',
     this.headers = const {},
     this.quality = 'auto',
   });
 
   final String url;
   final StreamFormat format;
+
+  /// Human-friendly server label shown in the server/quality picker
+  /// (e.g. "VidStream", "MP4Upload"). Falls back to "Default" when the backend
+  /// omits it.
+  final String server;
 
   /// Headers the player must forward to the CDN (Referer, User-Agent, …).
   final Map<String, String> headers;
@@ -24,9 +30,11 @@ class StreamLink extends Equatable {
 
   factory StreamLink.fromJson(Map<String, dynamic> json) {
     final url = (json['url'] ?? '') as String;
+    final server = (json['server'] as String?)?.trim();
     return StreamLink(
       url: url,
       format: StreamFormat.fromValue(json['format'] as String?, url),
+      server: (server == null || server.isEmpty) ? 'Default' : server,
       headers: (json['headers'] as Map?)?.map(
             (k, v) => MapEntry(k.toString(), v.toString()),
           ) ??
@@ -35,8 +43,14 @@ class StreamLink extends Equatable {
     );
   }
 
+  /// A short label combining server and quality for the picker UI, e.g.
+  /// "VidStream · 1080p".
+  String get label => quality.isEmpty || quality == 'auto'
+      ? server
+      : '$server · $quality';
+
   @override
-  List<Object?> get props => [url, format, quality];
+  List<Object?> get props => [url, format, server, quality];
 }
 
 /// Supported streaming container formats.

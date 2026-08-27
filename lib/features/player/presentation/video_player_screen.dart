@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/failures.dart';
 import '../../../shared/models/episode.dart';
+import '../../../shared/models/stream_link.dart';
 import '../providers/player_providers.dart';
 import '../providers/player_state.dart';
 
@@ -35,6 +36,19 @@ class VideoPlayerScreen extends ConsumerWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          // Server/quality picker — only when more than one source resolved.
+          if (state is PlayerReady && (state as PlayerReady).hasChoice)
+            IconButton(
+              icon: const Icon(Icons.playlist_play),
+              tooltip: 'Servers',
+              onPressed: () => _showSourcePicker(
+                context,
+                state as PlayerReady,
+                controller.selectSource,
+              ),
+            ),
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -55,6 +69,75 @@ class VideoPlayerScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Opens a bottom sheet listing every resolved source so the user can switch
+/// servers/qualities. Tapping a row selects it (via [onSelect]) and closes the
+/// sheet; the currently playing source is marked with a check.
+Future<void> _showSourcePicker(
+  BuildContext context,
+  PlayerReady state,
+  void Function(StreamLink) onSelect,
+) {
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: const Color(0xFF121212),
+    showDragHandle: true,
+    builder: (context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+              child: Text(
+                'Servers',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: state.sources.length,
+                itemBuilder: (context, index) {
+                  final source = state.sources[index];
+                  final isSelected = source.url == state.selected.url;
+                  return ListTile(
+                    leading: Icon(
+                      isSelected
+                          ? Icons.play_circle
+                          : Icons.play_circle_outline,
+                      color: isSelected ? Colors.tealAccent : Colors.white54,
+                    ),
+                    title: Text(
+                      source.server,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      source.quality,
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: Colors.tealAccent)
+                        : null,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      onSelect(source);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// Loading placeholder shown while the direct link is being scraped/resolved.

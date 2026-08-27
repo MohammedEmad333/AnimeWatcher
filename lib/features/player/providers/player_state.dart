@@ -1,6 +1,7 @@
 import 'package:better_player/better_player.dart';
 
 import '../../../core/error/failures.dart';
+import '../../../shared/models/stream_link.dart';
 
 /// UI state for the Video Player screen.
 ///
@@ -18,10 +19,28 @@ class PlayerLoading extends PlayerState {
 }
 
 /// A playable controller is ready and attached.
+///
+/// Carries the full list of resolved [sources] and the currently [selected]
+/// one so the screen can render a server/quality picker and let the user switch
+/// between servers mid-playback.
 class PlayerReady extends PlayerState {
-  const PlayerReady(this.controller);
+  const PlayerReady({
+    required this.controller,
+    required this.sources,
+    required this.selected,
+  });
 
   final BetterPlayerController controller;
+
+  /// Every source the backend resolved, in preference order.
+  final List<StreamLink> sources;
+
+  /// The source currently attached to [controller].
+  final StreamLink selected;
+
+  /// Whether there's more than one source to choose between (drives whether the
+  /// picker affordance is shown at all).
+  bool get hasChoice => sources.length > 1;
 }
 
 /// The resolve succeeded but the episode has no playable sources right now.
