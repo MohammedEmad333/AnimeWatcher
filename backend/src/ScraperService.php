@@ -9,7 +9,7 @@ declare(strict_types=1);
  * into one or more direct, playable links (progressive `.mp4` or HLS `.m3u8`).
  *
  * Each per-server `scrapeFrom*()` method is a self-contained seam you can
- * implement against one authorized/licensed source without touching the rest
+ * implement against one source without touching the rest
  * of the app. Until a real resolver is wired up, they return null, so
  * getSources() yields an empty array — reported by the endpoint as HTTP 200
  * with `sources: []` and rendered by the Flutter player as a clean
@@ -82,11 +82,9 @@ final class ScraperService
      * Resolves Arabic video sources for an episode by fetching a configured
      * watch page and extracting every embed / stream URL it exposes.
      *
-     * IMPORTANT — configure your own source. This method does NOT hardcode any
-     * streaming domain. It reads a base URL from the `ARABIC_SOURCE_BASE_URL`
+     * IMPORTANT — configure your own source. It reads a base URL from the `ARABIC_SOURCE_BASE_URL`
      * environment variable (see backend/config/config.php's env() helper) and
-     * builds the watch URL as `{base}/{episodeId}`. Point it only at a source
-     * you are authorized/licensed to scrape. When the variable is unset the
+     * builds the watch URL as `{base}/{episodeId}`. When the variable is unset the
      * method returns an empty array, so the endpoint stays a clean HTTP 200 with
      * `sources: []`.
      *
@@ -115,7 +113,7 @@ final class ScraperService
 
         $base = env('ARABIC_SOURCE_BASE_URL');
         if ($base === null || $base === '') {
-            // No authorized source configured — nothing to scrape.
+            // No source configured — nothing to scrape.
             return [];
         }
 
@@ -268,7 +266,7 @@ final class ScraperService
 
     /**
      * Resolve an HLS (`.m3u8`) source. Placeholder returns null until a real,
-     * authorized resolver is wired up (see scrapeArabicSources for the pattern).
+     * resolver is wired up (see scrapeArabicSources for the pattern).
      *
      * @return array<string,mixed>|null
      */
@@ -279,7 +277,7 @@ final class ScraperService
 
     /**
      * Resolve a progressive MP4 source. Placeholder returns null until a real,
-     * authorized resolver is wired up (see scrapeArabicSources for the pattern).
+     * resolver is wired up (see scrapeArabicSources for the pattern).
      *
      * @return array<string,mixed>|null
      */
