@@ -4,6 +4,7 @@ import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
 import '../../../core/network/api_interceptors.dart';
 import '../../../shared/models/anime.dart';
+import '../../../shared/models/episode.dart';
 
 /// Talks to the public Jikan API (MyAnimeList) **directly** from the app.
 ///
@@ -54,6 +55,83 @@ class JikanRemoteDataSource {
       return items
           .whereType<Map>()
           .map((e) => _mapAnime(e.cast<String, dynamic>()))
+          .toList();
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  /// Recently aired episodes across all series
+  /// (`GET /watch/episodes`).
+  ///
+  /// Jikan groups the payload by title: each item carries an `entry` (the
+  /// anime) plus its most recent `episodes`. We flatten that into a single,
+  /// ordered list of [Episode]s for the Home "Latest Episodes" feed, tagging
+  /// each with its series title (shown as the tile subtitle) and cover.
+  Future<List<Episode>> getLatestEpisodes({int limit = 20}) async {
+    try {
+      final response = await _dio.get<dynamic>(
+        ApiConstants.jikanWatchEpisodes,
+      );
+      final data = response.data;
+      final items = data is Map ? data['data'] : null;
+      if (items is! List) return const [];
+
+      final episodes = <Episode>[];
+      for (final entryRaw in items.whereType<Map>()) {
+        final entry = entryRaw.cast<String, dynamic>();
+        final anime = (entry['entry'] as Map?)?.cast<String, dynamic>();
+        if (anime == null) continue;
+
+        final animeId = (anime['mal_id'] ?? '').toString();
+        final animeTitle =
+            (anime['title'] ?? anime['title_english'] ?? '').toString();
+        final jpg = (anime['images'] as Map?)?['jpg'] as Map?;
+        final thumb =
+            (jpg?['image_url'] ?? jpg?['large_image_url'] ?? '').toString();
+
+        final epList = (entry['episodes'] as List?) ?? const [];
+        for (final epRaw in epList.whereType<Map>()) {
+          final ep = epRaw.cast<String, dynamic>();
+          final epMalId = (ep['mal_id'] ?? '').toString();
+          final number = ep['mal_id'] is num
+              ? (ep['mal_id'] as num).toInt()
+              : int.tryParse(epMalId) ?? 0;
+
+          episodes.add(
+            Episode.fromJson({
+              // Compose a stable, unique key so Riverpod/ListView can
+              // distinguish rows even when two series share an episode number.
+              'id': '${animeId}_$epMalId',
+              'anime_id': animeId,
+              'number': number,
+              // The tile renders "Episode {number}" as its title and this as
+              // the subtitle, so surfacing the series name here is most useful.
+              'title': animeTitle,
+              'thumbnail_url': thumb,
+            }),
+          );
+          if (episodes.length >= limit) return episodes;
+        }
+      }
+      return episodes;
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  /// Anime genres / categories (`GET /genres/anime`), returned as a plain list
+  /// of names for the Home "Categories" chips.
+  Future<List<String>> getCategories() async {
+    try {
+      final response = await _dio.get<dynamic>(ApiConstants.jikanGenres);
+      final data = response.data;
+      final items = data is Map ? data['data'] : null;
+      if (items is! List) return const [];
+      return items
+          .whereType<Map>()
+          .map((g) => (g['name'] ?? '').toString())
+          .where((name) => name.isNotEmpty)
           .toList();
     } on DioException catch (e) {
       throw _unwrap(e);

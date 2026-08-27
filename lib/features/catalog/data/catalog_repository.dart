@@ -12,9 +12,12 @@ import 'jikan_remote_datasource.dart';
 /// directly; on failure it throws a [Failure] (captured by Riverpod's
 /// `AsyncValue`).
 ///
-/// Trending + Details are sourced from Jikan **directly** ([_jikan]) so the
-/// catalog keeps working even when the backend host blocks outbound requests;
-/// everything else goes through our backend ([_remote]).
+/// The read-only catalog feeds — Latest Episodes, Trending, Categories and
+/// Details — are all sourced from Jikan **directly** ([_jikan]) so the catalog
+/// keeps working even when the backend host blocks outbound requests or hasn't
+/// implemented those endpoints. Everything that needs our own data/auth
+/// (episode lists tied to the scraper, stream sources) still goes through the
+/// backend ([_remote]).
 class CatalogRepository {
   const CatalogRepository(this._remote, this._jikan);
 
@@ -22,12 +25,12 @@ class CatalogRepository {
   final JikanRemoteDataSource _jikan;
 
   Future<List<Episode>> getLatestEpisodes() =>
-      _guard(() => _remote.getLatestEpisodes());
+      _guard(() => _jikan.getLatestEpisodes());
 
   Future<List<Anime>> getTrending() => _guard(() => _jikan.getTrending());
 
   Future<List<String>> getCategories() =>
-      _guard(() => _remote.getCategories());
+      _guard(() => _jikan.getCategories());
 
   Future<Anime> getAnimeDetails(String id) =>
       _guard(() => _jikan.getAnimeDetails(id));

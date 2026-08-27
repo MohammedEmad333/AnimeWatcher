@@ -62,6 +62,85 @@ final class JikanClient
         return is_array($data) ? $this->mapAnime($data) : null;
     }
 
+    /**
+     * Recently aired episodes across all series (Jikan `GET /watch/episodes`).
+     *
+     * Jikan groups the payload by title (an `entry` plus its latest
+     * `episodes`); this flattens it into a single, ordered list of rows in the
+     * exact shape the Flutter `Episode` model expects:
+     *   [{ id, anime_id, number, title, thumbnail_url }]
+     *
+     * @param  int $limit Max episodes to return.
+     * @return array<int,array<string,mixed>>
+     */
+    public function getLatestEpisodes(int $limit = 20): array
+    {
+        $limit = max(1, $limit);
+        $json  = $this->get('/watch/episodes');
+        $items = $json['data'] ?? [];
+
+        $episodes = [];
+        foreach (is_array($items) ? $items : [] as $entry) {
+            $anime = $entry['entry'] ?? null;
+            if (!is_array($anime)) {
+                continue;
+            }
+
+            $animeId = (string) ($anime['mal_id'] ?? '');
+            $title   = (string) ($anime['title'] ?? $anime['title_english'] ?? '');
+            $images  = $anime['images']['jpg'] ?? [];
+            $thumb   = (string) ($images['image_url'] ?? $images['large_image_url'] ?? '');
+
+            foreach (($entry['episodes'] ?? []) as $ep) {
+                if (!is_array($ep)) {
+                    continue;
+                }
+                $epId = (string) ($ep['mal_id'] ?? '');
+                $episodes[] = [
+                    // Stable composite key: two series can share an episode no.
+                    'id'            => $animeId . '_' . $epId,
+                    'anime_id'      => $animeId,
+                    'number'        => (int) ($ep['mal_id'] ?? 0),
+                    // The tile shows "Episode {number}" with the series name as
+                    // the subtitle, so surface the title here.
+                    'title'         => $title,
+                    'thumbnail_url' => $thumb,
+                ];
+                if (count($episodes) >= $limit) {
+                    return $episodes;
+                }
+            }
+        }
+
+        return $episodes;
+    }
+
+    /**
+     * Anime genres / categories (Jikan `GET /genres/anime`), normalized to:
+     *   [{ id, name, count }]
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function getCategories(): array
+    {
+        $json  = $this->get('/genres/anime');
+        $items = $json['data'] ?? [];
+
+        $categories = [];
+        foreach (is_array($items) ? $items : [] as $g) {
+            if (!isset($g['name'])) {
+                continue;
+            }
+            $categories[] = [
+                'id'    => (string) ($g['mal_id'] ?? ''),
+                'name'  => (string) $g['name'],
+                'count' => (int) ($g['count'] ?? 0),
+            ];
+        }
+
+        return $categories;
+    }
+
     // -------------------------------------------------------------------------
     // HTTP + cache
     // -------------------------------------------------------------------------

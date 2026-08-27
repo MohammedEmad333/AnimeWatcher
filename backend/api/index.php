@@ -19,6 +19,8 @@ declare(strict_types=1);
  *     POST   /api/history                 →  api/history/index.php
  *     GET    /api/anime/trending          →  api/anime/trending.php
  *     GET    /api/anime/details/{id}      →  api/anime/details.php  ($_GET['id'])
+ *     GET    /api/episodes/latest         →  api/episodes/latest.php
+ *     GET    /api/categories              →  api/categories.php
  *     GET    /api/episodes/sources        →  api/episodes/sources.php
  *
  * The router loads `bootstrap.php` first, which applies the CORS + JSON headers
@@ -80,6 +82,8 @@ $routes = [
     // Catalog (Jikan proxy + cache)
     [['GET'],                      '/anime/trending',      $dir . '/anime/trending.php'],
     [['GET'],                      '/anime/details/{id}',  $dir . '/anime/details.php'],
+    [['GET'],                      '/episodes/latest',     $dir . '/episodes/latest.php'],
+    [['GET'],                      '/categories',          $dir . '/categories.php'],
 
     // Video source scraping
     [['GET'],                      '/episodes/sources',    $dir . '/episodes/sources.php'],
