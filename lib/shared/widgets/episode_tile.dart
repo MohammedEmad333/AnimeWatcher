@@ -49,19 +49,48 @@ class EpisodeTile extends StatelessWidget {
         'Episode ${episode.number}',
         style: const TextStyle(fontWeight: FontWeight.w600),
       ),
-      subtitle: episode.title.isEmpty
-          ? null
-          : Text(
+      subtitle: _buildSubtitle(context),
+      trailing: _buildTrailing(context),
+    );
+  }
+
+  /// Episode title, with an optional "Filler" marker when flagged by metadata.
+  Widget? _buildSubtitle(BuildContext context) {
+    final hasTitle = episode.title.isNotEmpty;
+    if (!hasTitle && !episode.isFiller) return null;
+    return Row(
+      children: [
+        if (hasTitle)
+          Flexible(
+            child: Text(
               episode.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-      trailing: episode.durationLabel.isEmpty
-          ? const Icon(Icons.play_arrow_rounded)
-          : Text(
-              episode.durationLabel,
-              style: Theme.of(context).textTheme.bodySmall,
+          ),
+        if (episode.isFiller) ...[
+          if (hasTitle) const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(6),
             ),
+            child: const Text(
+              'Filler',
+              style: TextStyle(fontSize: 10, color: Colors.orangeAccent),
+            ),
+          ),
+        ],
+      ],
     );
+  }
+
+  /// Prefers the air date, then a duration label, else a play affordance.
+  Widget _buildTrailing(BuildContext context) {
+    final label =
+        episode.airedLabel.isNotEmpty ? episode.airedLabel : episode.durationLabel;
+    if (label.isEmpty) return const Icon(Icons.play_arrow_rounded);
+    return Text(label, style: Theme.of(context).textTheme.bodySmall);
   }
 }

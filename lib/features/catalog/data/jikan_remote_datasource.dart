@@ -5,6 +5,7 @@ import '../../../core/error/exceptions.dart';
 import '../../../core/network/api_interceptors.dart';
 import '../../../shared/models/anime.dart';
 import '../../../shared/models/episode.dart';
+import '../../../shared/models/genre.dart';
 
 /// Talks to the public Jikan API (MyAnimeList) **directly** from the app.
 ///
@@ -136,6 +137,119 @@ class JikanRemoteDataSource {
     } on DioException catch (e) {
       throw _unwrap(e);
     }
+  }
+
+  /// Per-episode metadata for a title (`GET /anime/{id}/episodes`).
+  ///
+  /// Enriches the Details screen with real episode titles, air dates and filler
+  /// flags. Jikan's list endpoint does not carry per-episode thumbnails or
+  /// synopses, so those are left empty here (the tile falls back to a
+  /// placeholder); callers that need a synopsis can fetch a single episode
+  /// separately. Titles are English/romaji — public metadata APIs don't provide
+  /// Arabic episode titles, so the UI shows what's available and degrades
+  /// gracefully.
+  Future<List<Episode>> getEpisodes(String animeId) async {
+    try {
+      final response = await _dio.get<dynamic>(
+        ApiConstants.jikanAnimeEpisodes(animeId),
+      );
+      final data = response.data;
+      final items = data is Map ? data['data'] : null;
+      if (items is! List) return const [];
+
+      return items.whereType<Map>().map((raw) {
+        final ep = raw.cast<String, dynamic>();
+        final number = ep['mal_id'] is num ? (ep['mal_id'] as num).toInt() : 0;
+        final title =
+            (ep['title'] ?? ep['title_romanji'] ?? '').toString();
+
+        return Episode.fromJson({
+          // Composite id keeps the player's episode_id stable & unique.
+          'id': '${animeId}_$number',
+          'anime_id': animeId,
+          'number': number,
+          'title': title,
+          'aired_label': _formatAired((ep['aired'] ?? '').toString()),
+          'filler': ep['filler'] == true,
+        });
+      }).toList();
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  /// All anime genres (`GET /genres/anime`) as structured [Genre]s (id + name),
+  /// for the Search screen's filter chips. (The Home "Categories" row uses the
+  /// name-only [getCategories] variant.)
+  Future<List<Genre>> getGenres() async {
+    try {
+      final response = await _dio.get<dynamic>(ApiConstants.jikanGenres);
+      final data = response.data;
+      final items = data is Map ? data['data'] : null;
+      if (items is! List) return const [];
+      return items
+          .whereType<Map>()
+          .map((g) => Genre.fromJson(g.cast<String, dynamic>()))
+          .where((g) => g.id.isNotEmpty && g.name.isNotEmpty)
+          .toList();
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  /// Searches anime by title (`GET /anime?q=..`), optionally filtered by a
+  /// genre id. Returns normalized [Anime]s for the results grid.
+  ///
+  /// With neither a query nor a genre there is nothing to search, so an empty
+  /// list is returned without hitting the network.
+  Future<List<Anime>> searchAnime({
+    String query = '',
+    String? genreId,
+    int page = 1,
+    int limit = 24,
+  }) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty && (genreId == null || genreId.isEmpty)) {
+      return const [];
+    }
+
+    try {
+      final response = await _dio.get<dynamic>(
+        ApiConstants.jikanAnimeSearch,
+        queryParameters: {
+          if (trimmed.isNotEmpty) 'q': trimmed,
+          if (genreId != null && genreId.isNotEmpty) 'genres': genreId,
+          'page': page.clamp(1, 1000),
+          'limit': limit.clamp(1, 25),
+          'sfw': true,
+          'order_by': 'popularity',
+          'sort': 'asc',
+        },
+      );
+      final data = response.data;
+      final items = data is Map ? data['data'] : null;
+      if (items is! List) return const [];
+      return items
+          .whereType<Map>()
+          .map((e) => _mapAnime(e.cast<String, dynamic>()))
+          .toList();
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  /// Formats a Jikan ISO air date (e.g. `2023-09-29T00:00:00+00:00`) into a
+  /// short, readable label like `Sep 29, 2023`. Returns '' when unparseable.
+  String _formatAired(String iso) {
+    if (iso.isEmpty) return '';
+    final date = DateTime.tryParse(iso);
+    if (date == null) return '';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final month = months[(date.month - 1).clamp(0, 11)];
+    return '$month ${date.day}, ${date.year}';
   }
 
   /// Full details for one title (`GET /anime/{id}/full`).

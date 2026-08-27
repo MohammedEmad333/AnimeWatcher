@@ -24,6 +24,15 @@ class PlayerReady extends PlayerState {
   final BetterPlayerController controller;
 }
 
+/// The resolve succeeded but the episode has no playable sources right now.
+///
+/// This is a normal, expected outcome (not a failure) — the UI shows a clean
+/// "No streaming sources available" message with a Retry, distinct from the
+/// red error state used for genuine network/playback failures.
+class PlayerNoSources extends PlayerState {
+  const PlayerNoSources();
+}
+
 /// Something failed — either resolving the link or initializing playback.
 /// Carries the [Failure] to show and enables the Retry button.
 class PlayerError extends PlayerState {

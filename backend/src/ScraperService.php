@@ -8,11 +8,12 @@ declare(strict_types=1);
  * This is the modular seam where AnimeWatcher turns an internal `episode_id`
  * into one or more direct, playable links (progressive `.mp4` or HLS `.m3u8`).
  *
- * The implementation below returns **mock** links so the whole stack (router →
- * endpoint → Flutter player) is runnable end-to-end today. Real scraping is
- * intentionally isolated behind the per-server `scrapeFrom*()` methods: each is
- * a self-contained unit you can implement against one target site without
- * touching the rest of the app. Register a new server by adding it to
+ * Each per-server `scrapeFrom*()` method is a self-contained seam you can
+ * implement against one authorized/licensed source without touching the rest
+ * of the app. Until a real resolver is wired up, they return null, so
+ * getSources() yields an empty array — reported by the endpoint as HTTP 200
+ * with `sources: []` and rendered by the Flutter player as a clean
+ * "No streaming sources available" state. Register a new server by adding it to
  * `$this->servers` and writing its `scrape*` method.
  *
  * Return contract — every source is an associative array shaped for the Flutter
@@ -88,14 +89,15 @@ final class ScraperService
      */
     private function scrapeFromVidstream(string $episodeId, string $lang): ?array
     {
-        // --- MOCK (remove once real parsing is wired up) ---------------------
-        return [
-            'server'  => $this->servers['vidstream'],
-            'url'     => "https://cdn.example-vidstream.test/hls/{$lang}/{$episodeId}/master.m3u8",
-            'format'  => 'hls',
-            'quality' => 'auto',
-            'headers' => ['Referer' => 'https://example-vidstream.test/'],
-        ];
+        // No licensed/authorized source is wired up for this server yet, so we
+        // return null rather than a fake link. Returning null here (and from
+        // every resolver) makes getSources() yield an empty array, which the
+        // endpoint reports as HTTP 200 with `sources: []` and the Flutter
+        // player renders as a clean "No streaming sources available" state.
+        //
+        // To implement a real resolver, fetch + parse via $this->httpGet(...)
+        // and return the contract-shaped array documented above.
+        return null;
     }
 
     /**
@@ -113,14 +115,11 @@ final class ScraperService
      */
     private function scrapeFromMp4Upload(string $episodeId, string $lang): ?array
     {
-        // --- MOCK (remove once real parsing is wired up) ---------------------
-        return [
-            'server'  => $this->servers['mp4upload'],
-            'url'     => "https://cdn.example-mp4upload.test/files/{$lang}/{$episodeId}/1080p.mp4",
-            'format'  => 'mp4',
-            'quality' => '1080p',
-            'headers' => ['Referer' => 'https://example-mp4upload.test/'],
-        ];
+        // No licensed/authorized source wired up yet — see scrapeFromVidstream.
+        // Returning null keeps the endpoint honest (empty sources → graceful
+        // "No streaming sources available" in the app) instead of serving a
+        // link that doesn't actually play.
+        return null;
     }
 
     // -------------------------------------------------------------------------

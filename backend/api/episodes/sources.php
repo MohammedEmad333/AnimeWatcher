@@ -43,8 +43,13 @@ if (!in_array($lang, ['ar', 'en'], true)) {
 try {
     $sources = (new ScraperService())->getSources($episodeId, $lang);
 
+    // An empty result is NOT an error: the episode simply has no resolvable
+    // sources right now. Returning 200 with an empty `sources` array lets the
+    // client render a clean "No streaming sources available" state (with a
+    // Retry) instead of surfacing a generic HTTP error. We still log it so the
+    // absence is observable server-side.
     if ($sources === []) {
-        Response::error('No playable sources were found for this episode.', 404);
+        error_log("episodes/sources.php: no sources for episode_id=$episodeId lang=$lang");
     }
 
     Response::success([
@@ -53,6 +58,7 @@ try {
         'sources'    => $sources,
     ]);
 } catch (Throwable $e) {
+    // A genuine failure (upstream/transport error) — distinct from "no sources".
     error_log('episodes/sources.php: ' . $e->getMessage());
     Response::error('Could not resolve video sources right now.', 502);
 }
