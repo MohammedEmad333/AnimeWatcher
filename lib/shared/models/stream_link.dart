@@ -54,9 +54,14 @@ class StreamLink extends Equatable {
 }
 
 /// Supported streaming container formats.
+///
+/// [mp4] and [hls] are direct media the native player ([better_player]) can
+/// play. [embed] is an iframe/web player page (no direct media URL) that must
+/// be rendered in a WebView instead.
 enum StreamFormat {
   mp4,
-  hls;
+  hls,
+  embed;
 
   /// Resolves the format from an explicit backend value, falling back to
   /// inferring it from the URL extension.
@@ -67,9 +72,18 @@ enum StreamFormat {
         return StreamFormat.hls;
       case 'mp4':
         return StreamFormat.mp4;
+      case 'embed':
+      case 'iframe':
+        return StreamFormat.embed;
     }
-    return url.toLowerCase().contains('.m3u8')
-        ? StreamFormat.hls
-        : StreamFormat.mp4;
+    final lower = url.toLowerCase();
+    if (lower.contains('.m3u8')) return StreamFormat.hls;
+    if (lower.contains('.mp4')) return StreamFormat.mp4;
+    // No recognizable direct-media extension → assume it's an embed page.
+    return StreamFormat.embed;
   }
+
+  /// Whether this source is a web/iframe embed (WebView) rather than direct
+  /// media the native player can consume.
+  bool get isEmbed => this == StreamFormat.embed;
 }

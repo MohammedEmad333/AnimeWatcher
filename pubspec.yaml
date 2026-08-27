@@ -20,6 +20,9 @@ dependencies:
   # Video playback (mp4 + m3u8 / HLS)
   better_player: ^0.0.83
 
+  # WebView playback for iframe/embed sources that aren't direct mp4/hls links
+  webview_flutter: ^4.4.4
+
   # Local database for Favorites / Library (offline cache)
   hive: ^2.2.3
   hive_flutter: ^1.1.0
