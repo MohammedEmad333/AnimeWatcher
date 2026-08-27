@@ -1,0 +1,61 @@
+name: Build Android APK
+
+# Build a debug + release APK for the AnimeWatcher Flutter app.
+# Runs on pushes to the main branches and can be triggered manually
+# (Actions tab → "Build Android APK" → "Run workflow"). The built APKs
+# are attached as downloadable artifacts on each run.
+
+on:
+  push:
+    branches:
+      - main
+      - claude/alwaysdata-upload-yw531u
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Pinned to a stable channel version compatible with the pinned
+          # dependencies (notably better_player 0.0.83).
+          flutter-version: "3.22.3"
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files
+        # The repo tracks only lib/ + pubspec (no android/ folder), so create
+        # the Android runner in place. Existing files are preserved.
+        run: flutter create --platforms=android --project-name anime_watcher .
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build debug APK
+        run: flutter build apk --debug
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: animewatcher-apk
+          path: |
+            build/app/outputs/flutter-apk/app-debug.apk
+            build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
