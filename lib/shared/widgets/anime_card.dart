@@ -15,6 +15,7 @@ class AnimeCard extends StatelessWidget {
     required this.onTap,
     this.width = 140,
     this.trailing,
+    this.subtitle,
   });
 
   final Anime anime;
@@ -23,6 +24,10 @@ class AnimeCard extends StatelessWidget {
 
   /// Optional overlay in the top-right corner (e.g. a favorite toggle).
   final Widget? trailing;
+
+  /// Optional muted line shown beneath the title (e.g. the primary genre),
+  /// mirroring the "type" label under each poster in the home design.
+  final String? subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +47,7 @@ class AnimeCard extends StatelessWidget {
                     _Cover(url: anime.coverUrl),
                     if (anime.rating > 0)
                       Positioned(
-                        left: 8,
+                        right: 8,
                         bottom: 8,
                         child: _RatingBadge(rating: anime.rating),
                       ),
@@ -55,12 +60,23 @@ class AnimeCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               anime.title,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
             ),
+            if (subtitle != null && subtitle!.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                subtitle!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.white54,
+                    ),
+              ),
+            ],
           ],
         ),
       ),

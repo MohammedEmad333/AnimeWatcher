@@ -29,6 +29,12 @@ final trendingAnimeProvider = FutureProvider.autoDispose<List<Anime>>(
   (ref) => ref.watch(catalogRepositoryProvider).getTrending(),
 );
 
+/// Currently-airing titles for the Home "newly added" rail. Kept separate from
+/// [trendingAnimeProvider] so the two poster rows surface distinct titles.
+final newlyAddedAnimeProvider = FutureProvider.autoDispose<List<Anime>>(
+  (ref) => ref.watch(catalogRepositoryProvider).getTopAiring(),
+);
+
 final categoriesProvider = FutureProvider.autoDispose<List<String>>(
   (ref) => ref.watch(catalogRepositoryProvider).getCategories(),
 );

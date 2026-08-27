@@ -11,6 +11,10 @@ class AppTheme {
   static const Color _background = Color(0xFF0E0E12);
   static const Color _surface = Color(0xFF1A1A22);
 
+  /// Warm amber accent used for badges and highlights (episode-number chips,
+  /// active carousel dot). Matches the yellow accents of the home design.
+  static const Color accent = Color(0xFFFFC107);
+
   static ThemeData get dark {
     final colorScheme = const ColorScheme.dark(
       primary: _primary,
