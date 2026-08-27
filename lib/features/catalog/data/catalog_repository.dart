@@ -39,8 +39,50 @@ class CatalogRepository {
   /// Details screen shows real data regardless of the backend host. The
   /// [languageCode] is retained for the player's later source resolution; the
   /// metadata itself is language-independent (public APIs are EN/romaji).
-  Future<List<Episode>> getEpisodes(String id, {required String languageCode}) =>
-      _guard(() => _jikan.getEpisodes(id));
+  ///
+  /// Resilience: Jikan proxies MyAnimeList, which frequently rate-limits or
+  /// refuses connections ("Failed to connect to MyAnimeList"). When the metadata
+  /// list is unavailable (upstream error) or empty **and** we already know how
+  /// many episodes the title has ([fallbackCount], from the details call), we
+  /// synthesize a plain numbered list so the user can still reach the player —
+  /// streaming only needs the episode number, not the metadata. With no known
+  /// count (e.g. an unaired title) the upstream failure surfaces as before so
+  /// the UI can show its error + Retry.
+  Future<List<Episode>> getEpisodes(
+    String id, {
+    required String languageCode,
+    int fallbackCount = 0,
+  }) async {
+    try {
+      final episodes = await _jikan.getEpisodes(id);
+      if (episodes.isNotEmpty) return episodes;
+      // Reachable but no rows (e.g. metadata not populated yet) → synthesize.
+      if (fallbackCount > 0) return _syntheticEpisodes(id, fallbackCount);
+      return const [];
+    } on Failure {
+      if (fallbackCount > 0) return _syntheticEpisodes(id, fallbackCount);
+      rethrow;
+    } catch (e) {
+      if (fallbackCount > 0) return _syntheticEpisodes(id, fallbackCount);
+      throw Failure.fromException(e);
+    }
+  }
+
+  /// Builds a minimal `1..count` episode list used as a fallback when the
+  /// metadata source is unavailable. Ids match the metadata path
+  /// (`{animeId}_{number}`) so the player resolves sources identically. Titles
+  /// are left empty; the tile renders "Episode {number}".
+  List<Episode> _syntheticEpisodes(String animeId, int count) {
+    return [
+      for (var n = 1; n <= count; n++)
+        Episode.fromJson({
+          'id': '${animeId}_$n',
+          'anime_id': animeId,
+          'number': n,
+          'title': '',
+        }),
+    ];
+  }
 
   /// Anime search by title, optionally filtered by a genre id.
   Future<List<Anime>> searchAnime({
