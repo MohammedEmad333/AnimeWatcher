@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../core/error/exceptions.dart';
 import '../../../core/network/api_interceptors.dart';
+import '../../../core/network/retry_interceptor.dart';
 import '../../../shared/models/anime.dart';
 import '../../../shared/models/episode.dart';
 import '../../../shared/models/genre.dart';
@@ -36,7 +37,29 @@ class JikanRemoteDataSource {
       ),
     );
     // No AuthInterceptor here — never leak the backend JWT to Jikan.
-    dio.interceptors.addAll([ErrorInterceptor(), LoggingInterceptor()]);
+    //
+    // Jikan (and MyAnimeList behind it) is a public, rate-limited service that
+    // regularly returns transient 429/5xx — and, while MAL is flaky, even 404s
+    // on its own fixed catalog endpoints. RetryInterceptor (installed BEFORE
+    // ErrorInterceptor so it sees the raw failure) retries those with backoff so
+    // the Home feeds recover on their own instead of showing an error on the
+    // first hiccup. A genuine 404 for a specific title/search is left to fail
+    // fast — only the known-good, argument-free catalog endpoints opt 404 back
+    // in.
+    dio.interceptors.addAll([
+      RetryInterceptor(
+        dio: dio,
+        retryWhen: (err) {
+          if (err.response?.statusCode != 404) return false;
+          final path = err.requestOptions.path;
+          return path == ApiConstants.jikanTopAnime ||
+              path == ApiConstants.jikanWatchEpisodes ||
+              path == ApiConstants.jikanGenres;
+        },
+      ),
+      ErrorInterceptor(),
+      LoggingInterceptor(),
+    ]);
     return dio;
   }
 

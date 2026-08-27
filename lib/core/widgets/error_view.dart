@@ -18,25 +18,31 @@ class ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
+    // The view is often placed inside a fixed-height slot (e.g. the Home
+    // carousel's SizedBox, or the player's video box). A long, wrapped error
+    // message can make the column taller than that slot, so we make the content
+    // scrollable and only pad-and-center it when there's room — this prevents a
+    // "BOTTOM OVERFLOWED" RenderFlex error while still looking centered when the
+    // available height is generous.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final content = Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               _iconFor(failure),
-              size: 56,
+              size: 48,
               color: Theme.of(context).colorScheme.error,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               failure.message,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
@@ -44,8 +50,23 @@ class ErrorView extends StatelessWidget {
               ),
             ],
           ],
-        ),
-      ),
+        );
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: ConstrainedBox(
+            // Fill the slot when it's tall enough (so the content stays
+            // vertically centered), but let the scroll view grow past it when
+            // the message is long instead of overflowing.
+            constraints: BoxConstraints(
+              minHeight: constraints.hasBoundedHeight
+                  ? (constraints.maxHeight - 32).clamp(0.0, double.infinity)
+                  : 0,
+            ),
+            child: Center(child: content),
+          ),
+        );
+      },
     );
   }
 

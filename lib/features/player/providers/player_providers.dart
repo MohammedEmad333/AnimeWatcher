@@ -28,6 +28,16 @@ final streamRepositoryProvider = Provider<StreamRepository>(
 /// How often the current playback position is synced to the backend.
 const Duration _syncInterval = Duration(seconds: 10);
 
+/// How many times a mid-playback failure (an expired/temporary scraped link)
+/// triggers an automatic re-scrape before we surface the error to the user.
+/// The budget is refilled once playback actually makes progress, so a link that
+/// plays for a while and then dies gets a fresh set of attempts.
+const int _maxAutoRescrapes = 2;
+
+/// Small delay before an automatic re-scrape, so a flapping source isn't hit in
+/// a tight loop.
+const Duration _rescrapeBackoff = Duration(milliseconds: 1200);
+
 /// Drives the Video Player screen for a single [Episode].
 ///
 /// Lifecycle:
@@ -72,10 +82,15 @@ class PlayerController extends StateNotifier<PlayerState> {
   bool _hasSeeked = false;
   bool _disposed = false;
 
+  /// Auto re-scrape bookkeeping for expired/temporary links.
+  int _autoRescrapes = 0;
+  bool _recovering = false;
+
   /// Resolves the link, restores the resume position, and prepares playback.
   /// Safe to call repeatedly (Retry).
   Future<void> load() async {
     _teardownPlayback();
+    _recovering = false; // a new load cycle supersedes any in-flight recovery
     _cancelToken = CancelToken();
     _hasSeeked = false;
     if (!_disposed) state = const PlayerLoading();
@@ -111,7 +126,40 @@ class PlayerController extends StateNotifier<PlayerState> {
     }
   }
 
-  Future<void> retry() => load();
+  /// User-initiated retry: refill the auto re-scrape budget and reload.
+  Future<void> retry() {
+    _autoRescrapes = 0;
+    return load();
+  }
+
+  /// Handles a mid-playback failure (typically an expired/temporary scraped
+  /// link). Automatically re-resolves a fresh link up to [_maxAutoRescrapes]
+  /// times before surfacing [PlayerError]. Re-entrant calls (the player can emit
+  /// several exception events in a row) are collapsed via [_recovering].
+  Future<void> _recoverFromPlaybackFailure() async {
+    if (_disposed || _recovering) return;
+
+    if (_autoRescrapes >= _maxAutoRescrapes) {
+      state = const PlayerError(
+        ServerFailure('Playback failed. The link may have expired.'),
+      );
+      return;
+    }
+
+    _recovering = true;
+    _autoRescrapes++;
+    // Detach the listener so the dead controller can't emit further exceptions
+    // while we back off (full teardown/dispose happens in load(), off the event
+    // callback stack). Surface the loading state immediately.
+    _controller?.removeEventsListener(_onPlayerEvent);
+    state = const PlayerLoading();
+
+    await Future<void>.delayed(_rescrapeBackoff);
+    if (_disposed) return;
+
+    // load() clears _recovering and re-resolves a fresh link from the backend.
+    await load();
+  }
 
   Future<int> _fetchResume() async {
     if (!_syncEnabled) return 0;
@@ -163,12 +211,15 @@ class PlayerController extends StateNotifier<PlayerState> {
         _seekToResumeOnce();
         _startSyncTimer();
         break;
+      case BetterPlayerEventType.progress:
+        // Real playback progress means this link works — refill the auto
+        // re-scrape budget so a later expiry gets a fresh set of attempts.
+        _autoRescrapes = 0;
+        break;
       case BetterPlayerEventType.exception:
-        if (!_disposed) {
-          state = const PlayerError(
-            ServerFailure('Playback failed. The link may have expired.'),
-          );
-        }
+        // An expired/temporary scraped link: try to recover with a fresh scrape
+        // before showing the error.
+        unawaited(_recoverFromPlaybackFailure());
         break;
       default:
         break;
