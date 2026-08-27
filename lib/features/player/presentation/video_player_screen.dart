@@ -63,10 +63,10 @@ class _PlayerLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return const ColoredBox(
       color: Colors.black,
-      alignment: Alignment.center,
-      child: const Column(
+      child: _CenteredScrollable(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularProgressIndicator(strokeWidth: 3),
@@ -81,6 +81,7 @@ class _PlayerLoadingView extends StatelessWidget {
             style: TextStyle(color: Colors.white38, fontSize: 12),
           ),
         ],
+        ),
       ),
     );
   }
@@ -96,11 +97,10 @@ class _NoSourcesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.black,
-      padding: const EdgeInsets.all(24),
-      alignment: Alignment.center,
-      child: Column(
+      child: _CenteredScrollable(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.videocam_off_outlined,
@@ -130,6 +130,7 @@ class _NoSourcesView extends StatelessWidget {
             style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
           ),
         ],
+        ),
       ),
     );
   }
@@ -144,11 +145,10 @@ class _PlayerErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return ColoredBox(
       color: Colors.black,
-      padding: const EdgeInsets.all(24),
-      alignment: Alignment.center,
-      child: Column(
+      child: _CenteredScrollable(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.error_outline, color: Colors.redAccent, size: 52),
@@ -171,7 +171,39 @@ class _PlayerErrorView extends StatelessWidget {
             label: const Text('Retry'),
           ),
         ],
+        ),
       ),
+    );
+  }
+}
+
+/// Centers its child inside the available space but lets it scroll instead of
+/// overflowing when the space is too short (e.g. inside the player's fixed 16:9
+/// box on small screens). Prevents "BOTTOM OVERFLOWED" RenderFlex errors while
+/// keeping the content visually centered whenever it fits.
+class _CenteredScrollable extends StatelessWidget {
+  const _CenteredScrollable({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const padding = EdgeInsets.all(24);
+        return SingleChildScrollView(
+          padding: padding,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.hasBoundedHeight
+                  ? (constraints.maxHeight - padding.vertical)
+                      .clamp(0.0, double.infinity)
+                  : 0,
+            ),
+            child: Center(child: child),
+          ),
+        );
+      },
     );
   }
 }
