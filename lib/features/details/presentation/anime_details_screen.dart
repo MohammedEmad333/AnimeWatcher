@@ -60,7 +60,7 @@ class AnimeDetailsScreen extends ConsumerWidget {
           _MetaAndFavorite(anime: anime),
           _SynopsisSection(anime: anime),
           _EpisodesSectionHeader(animeId: animeId),
-          _EpisodesSliver(animeId: animeId),
+          _EpisodesSliver(animeId: animeId, episodeCount: anime.episodeCount),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
@@ -249,15 +249,19 @@ class _EpisodesSectionHeader extends ConsumerWidget {
 
 /// The episode list for the selected language (Loading / Success / Error).
 class _EpisodesSliver extends ConsumerWidget {
-  const _EpisodesSliver({required this.animeId});
+  const _EpisodesSliver({required this.animeId, this.episodeCount = 0});
 
   final String animeId;
+
+  /// Known episode count from the loaded details, used as a fallback when the
+  /// Jikan episode metadata is unavailable (see `CatalogRepository.getEpisodes`).
+  final int episodeCount;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final language = ref.watch(selectedLanguageProvider);
-    final episodesState =
-        ref.watch(animeEpisodesProvider(EpisodeQuery(animeId, language)));
+    final query = EpisodeQuery(animeId, language, episodeCount: episodeCount);
+    final episodesState = ref.watch(animeEpisodesProvider(query));
 
     return episodesState.when(
       loading: () => SliverToBoxAdapter(child: ShimmerLoaders.episodeList()),
@@ -266,9 +270,7 @@ class _EpisodesSliver extends ConsumerWidget {
           height: 220,
           child: ErrorView(
             failure: error.asFailure,
-            onRetry: () => ref.invalidate(
-              animeEpisodesProvider(EpisodeQuery(animeId, language)),
-            ),
+            onRetry: () => ref.invalidate(animeEpisodesProvider(query)),
           ),
         ),
       ),

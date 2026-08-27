@@ -55,14 +55,19 @@ final selectedLanguageProvider =
 
 /// Composite key for the episodes family: episodes depend on both the anime and
 /// the chosen language, so switching the toggle re-fetches automatically.
+///
+/// [episodeCount] (from the loaded details) is carried through so the repository
+/// can fall back to a synthesized numbered list when Jikan's episode metadata is
+/// unavailable — see [CatalogRepository.getEpisodes].
 class EpisodeQuery extends Equatable {
-  const EpisodeQuery(this.animeId, this.language);
+  const EpisodeQuery(this.animeId, this.language, {this.episodeCount = 0});
 
   final String animeId;
   final ContentLanguage language;
+  final int episodeCount;
 
   @override
-  List<Object?> get props => [animeId, language];
+  List<Object?> get props => [animeId, language, episodeCount];
 }
 
 final animeEpisodesProvider =
@@ -70,5 +75,6 @@ final animeEpisodesProvider =
   (ref, query) => ref.watch(catalogRepositoryProvider).getEpisodes(
         query.animeId,
         languageCode: query.language.code,
+        fallbackCount: query.episodeCount,
       ),
 );
