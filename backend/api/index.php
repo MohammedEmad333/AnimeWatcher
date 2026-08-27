@@ -62,6 +62,9 @@ if ($route === '/' || $route === '/index.php') {
 $dir = __DIR__;
 
 $routes = [
+    // Diagnostics (public)
+    [['GET'],                      '/health',              $dir . '/health.php'],
+
     // Auth
     [['POST'],                     '/auth/register',       $dir . '/auth/register.php'],
     [['POST'],                     '/auth/login',          $dir . '/auth/login.php'],
