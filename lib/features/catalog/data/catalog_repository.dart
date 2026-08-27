@@ -26,8 +26,8 @@ class CatalogRepository {
   Future<Anime> getAnimeDetails(String id) =>
       _guard(() => _remote.getAnimeDetails(id));
 
-  Future<List<Episode>> getEpisodes(String id) =>
-      _guard(() => _remote.getEpisodes(id));
+  Future<List<Episode>> getEpisodes(String id, {required String languageCode}) =>
+      _guard(() => _remote.getEpisodes(id, languageCode: languageCode));
 
   /// Runs [action], rethrowing any error as a typed [Failure].
   Future<T> _guard<T>(Future<T> Function() action) async {

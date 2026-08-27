@@ -35,8 +35,16 @@ class CatalogRemoteDataSource {
     return Anime.fromJson(_asMap(data));
   }
 
-  Future<List<Episode>> getEpisodes(String animeId) async {
-    final data = await _client.get(ApiConstants.animeEpisodes(animeId));
+  /// Fetches the episode list for [animeId] in the requested [languageCode]
+  /// (`ar` / `en`); the backend returns the servers for that language.
+  Future<List<Episode>> getEpisodes(
+    String animeId, {
+    required String languageCode,
+  }) async {
+    final data = await _client.get(
+      ApiConstants.animeEpisodes(animeId),
+      queryParameters: {'lang': languageCode},
+    );
     return _asList(data).map(Episode.fromJson).toList();
   }
 

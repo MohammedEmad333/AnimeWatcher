@@ -20,9 +20,15 @@ dependencies:
   # Video playback (mp4 + m3u8 / HLS)
   better_player: ^0.0.83
 
-  # Local database for Favorites / Library
+  # Local database for Favorites / Library (offline cache)
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+
+  # Secure storage for the JWT (Cloud Sync / Auth)
+  flutter_secure_storage: ^9.2.2
+
+  # Loading placeholders
+  shimmer: ^3.0.0
 
   # Utilities
   cached_network_image: ^3.3.1

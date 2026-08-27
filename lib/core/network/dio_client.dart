@@ -1,18 +1,21 @@
 import 'package:dio/dio.dart';
 
+import '../../features/auth/data/token_storage.dart';
 import '../constants/api_constants.dart';
 import '../error/exceptions.dart';
 import 'api_interceptors.dart';
+import 'auth_interceptor.dart';
 
 /// Thin, testable wrapper around a configured [Dio] instance.
 ///
 /// Responsibilities:
 ///  * Central base-URL / timeout / header configuration.
-///  * Installs logging + error-mapping interceptors.
+///  * Installs auth (JWT injection), error-mapping and logging interceptors.
 ///  * Exposes typed `get`/`post` helpers that surface the app's own
 ///    [Exception] types (see [ErrorInterceptor]) instead of [DioException].
 class DioClient {
-  DioClient({Dio? dio}) : _dio = dio ?? Dio() {
+  DioClient({required TokenStorage tokenStorage, Dio? dio})
+      : _dio = dio ?? Dio() {
     _dio
       ..options.baseUrl = ApiConstants.baseUrl
       ..options.connectTimeout = ApiConstants.connectTimeout
@@ -23,7 +26,10 @@ class DioClient {
         'Content-Type': 'application/json',
       };
 
+    // Order matters: Auth injects the header first; Error maps failures on the
+    // way back out; Logging observes everything.
     _dio.interceptors.addAll([
+      AuthInterceptor(tokenStorage),
       ErrorInterceptor(),
       LoggingInterceptor(),
     ]);
@@ -67,6 +73,28 @@ class DioClient {
   }) async {
     try {
       final response = await _dio.post(
+        path,
+        data: data,
+        queryParameters: queryParameters,
+        options: options,
+        cancelToken: cancelToken,
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
+  /// Performs a DELETE request and returns the decoded body.
+  Future<dynamic> delete(
+    String path, {
+    Object? data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final response = await _dio.delete(
         path,
         data: data,
         queryParameters: queryParameters,

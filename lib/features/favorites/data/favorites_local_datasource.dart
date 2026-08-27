@@ -39,4 +39,14 @@ class FavoritesLocalDataSource {
       throw CacheException('Failed to remove favorite: $e');
     }
   }
+
+  /// Replaces the entire cache with [items] (used to mirror the cloud list).
+  Future<void> replaceAll(List<Anime> items) async {
+    try {
+      await _box.clear();
+      await _box.putAll({for (final a in items) a.id: a});
+    } catch (e) {
+      throw CacheException('Failed to sync favorites cache: $e');
+    }
+  }
 }

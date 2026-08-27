@@ -1,35 +1,58 @@
 import '../../../core/error/failures.dart';
 import '../../../shared/models/anime.dart';
 import 'favorites_local_datasource.dart';
+import 'favorites_remote_datasource.dart';
 
-/// Repository for the locally-stored Favorites / Library.
+/// Repository for the user's cloud favorites, backed by a local Hive cache for
+/// offline resilience.
 ///
-/// Translates [CacheException]s from the datasource into [Failure]s.
+/// Reads go to the cloud (authenticated); on success the result is mirrored to
+/// the local cache so the Favorites grid can still render offline. Writes are
+/// sent to the cloud and, on success, reflected in the cache. All errors are
+/// translated into [Failure]s.
 class FavoritesRepository {
-  const FavoritesRepository(this._local);
+  const FavoritesRepository(this._remote, this._local);
 
+  final FavoritesRemoteDataSource _remote;
   final FavoritesLocalDataSource _local;
 
-  List<Anime> getFavorites() => _guard(() => _local.getAll());
-
-  bool isFavorite(String animeId) => _local.isFavorite(animeId);
-
-  Future<void> add(Anime anime) => _guardAsync(() => _local.add(anime));
-
-  Future<void> remove(String animeId) =>
-      _guardAsync(() => _local.remove(animeId));
-
-  T _guard<T>(T Function() action) {
+  /// Locally-cached favorites for an instant, offline-capable first paint.
+  List<Anime> cachedFavorites() {
     try {
-      return action();
-    } catch (e) {
-      throw Failure.fromException(e);
+      return _local.getAll();
+    } catch (_) {
+      return const [];
     }
   }
 
-  Future<T> _guardAsync<T>(Future<T> Function() action) async {
+  /// Fetches favorites from the cloud and refreshes the local cache.
+  Future<List<Anime>> getFavorites() {
+    return _guard(() async {
+      final favorites = await _remote.getFavorites();
+      await _local.replaceAll(favorites);
+      return favorites;
+    });
+  }
+
+  Future<void> add(Anime anime) {
+    return _guard(() async {
+      await _remote.addFavorite(anime.id);
+      await _local.add(anime);
+    });
+  }
+
+  Future<void> remove(String animeId) {
+    return _guard(() async {
+      await _remote.removeFavorite(animeId);
+      await _local.remove(animeId);
+    });
+  }
+
+  Future<T> _guard<T>(Future<T> Function() action) async {
     try {
       return await action();
+    } on Failure {
+      rethrow;
     } catch (e) {
       throw Failure.fromException(e);
     }

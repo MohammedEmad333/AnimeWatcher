@@ -22,7 +22,15 @@ class ApiConstants {
   static const Duration streamReceiveTimeout = Duration(seconds: 45);
 
   // ---------------------------------------------------------------------------
-  // Endpoints
+  // Auth endpoints (Cloud Sync)
+  // ---------------------------------------------------------------------------
+  static const String login = '/auth/login';
+  static const String register = '/auth/register';
+  static const String logout = '/auth/logout';
+  static const String currentUser = '/auth/me';
+
+  // ---------------------------------------------------------------------------
+  // Catalog endpoints
   // ---------------------------------------------------------------------------
   static const String latestEpisodes = '/episodes/latest';
   static const String trending = '/anime/trending';
@@ -32,10 +40,21 @@ class ApiConstants {
   static String animeDetails(String animeId) => '/anime/$animeId';
 
   /// Episode list for an anime: `/anime/{id}/episodes`.
+  ///
+  /// The caller passes a `lang` query parameter (`ar` / `en`) so the backend
+  /// returns the episode servers for the selected language.
   static String animeEpisodes(String animeId) => '/anime/$animeId/episodes';
 
   /// On-the-fly stream resolution: `/stream/{episodeId}`.
   ///
   /// The backend scrapes the source and returns a direct, playable video URL.
   static String streamLink(String episodeId) => '/stream/$episodeId';
+
+  // ---------------------------------------------------------------------------
+  // Favorites endpoints (cloud, authenticated)
+  // ---------------------------------------------------------------------------
+  static const String favorites = '/favorites';
+
+  /// Add / remove a single favorite: `/favorites/{animeId}`.
+  static String favorite(String animeId) => '/favorites/$animeId';
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/error/failures.dart';
 import '../../../../core/widgets/error_view.dart';
+import '../../../../core/widgets/shimmer_loaders.dart';
 import '../../../../shared/models/anime.dart';
 import '../../../../shared/widgets/anime_card.dart';
 
@@ -27,7 +28,7 @@ class HorizontalAnimeList extends StatelessWidget {
     return SizedBox(
       height: height,
       child: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => ShimmerLoaders.animeCarousel(height: height),
         error: (error, _) => ErrorView(
           failure: error.asFailure,
           onRetry: onRetry,

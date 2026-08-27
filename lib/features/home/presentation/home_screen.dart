@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/failures.dart';
+import '../../../core/widgets/shimmer_loaders.dart';
 import '../../../shared/models/anime.dart';
 import '../../../shared/models/episode.dart';
 import '../../../shared/widgets/episode_tile.dart';
+import '../../auth/presentation/auth_screen.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../catalog/providers/catalog_providers.dart';
 import '../../details/presentation/anime_details_screen.dart';
 import '../../favorites/presentation/favorites_screen.dart';
@@ -36,6 +39,7 @@ class HomeScreen extends ConsumerWidget {
               MaterialPageRoute(builder: (_) => const FavoritesScreen()),
             ),
           ),
+          const _AccountAction(),
         ],
       ),
       body: RefreshIndicator(
@@ -101,10 +105,7 @@ class _LatestEpisodesRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return state.when(
-      loading: () => const SizedBox(
-        height: 96,
-        child: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () => ShimmerLoaders.episodeList(count: 3),
       error: (error, _) => Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -128,6 +129,39 @@ class _LatestEpisodesRow extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+/// App-bar action reflecting auth state: a login icon when signed out, or a
+/// menu with "Sign out" when signed in.
+class _AccountAction extends ConsumerWidget {
+  const _AccountAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isAuthenticated = ref.watch(isAuthenticatedProvider);
+
+    if (!isAuthenticated) {
+      return IconButton(
+        tooltip: 'Sign in',
+        icon: const Icon(Icons.login),
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
+        ),
+      );
+    }
+
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.account_circle),
+      onSelected: (value) {
+        if (value == 'logout') {
+          ref.read(authControllerProvider.notifier).logout();
+        }
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(value: 'logout', child: Text('Sign out')),
+      ],
     );
   }
 }

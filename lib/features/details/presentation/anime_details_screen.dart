@@ -3,19 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/failures.dart';
+import '../../../core/utils/snackbar_utils.dart';
 import '../../../core/widgets/error_view.dart';
 import '../../../core/widgets/loading_indicator.dart';
+import '../../../core/widgets/shimmer_loaders.dart';
 import '../../../shared/models/anime.dart';
+import '../../../shared/models/content_language.dart';
 import '../../../shared/models/episode.dart';
 import '../../../shared/widgets/episode_tile.dart';
+import '../../auth/presentation/auth_screen.dart';
+import '../../auth/providers/auth_providers.dart';
 import '../../catalog/providers/catalog_providers.dart';
 import '../../favorites/providers/favorites_providers.dart';
 import '../../player/presentation/video_player_screen.dart';
+import 'widgets/language_toggle.dart';
 
-/// Details for a single anime: cover, synopsis, rating, and its episode list.
+/// Details for a single anime: cover, synopsis, rating, an authenticated
+/// "Add to Favorites" action, an Arabic / English language toggle, and the
+/// episode list for the selected language.
 ///
-/// An optional [preview] (passed from the list the user tapped) lets the header
-/// render instantly while the full details load, avoiding a blank screen.
+/// An optional [preview] renders the header instantly while full details load.
 class AnimeDetailsScreen extends ConsumerWidget {
   const AnimeDetailsScreen({
     super.key,
@@ -29,44 +36,39 @@ class AnimeDetailsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailsState = ref.watch(animeDetailsProvider(animeId));
-    final episodesState = ref.watch(animeEpisodesProvider(animeId));
-
-    // Prefer freshly-loaded details; fall back to the preview while loading.
     final anime = detailsState.valueOrNull ?? preview;
 
-    return Scaffold(
-      body: detailsState.isLoading && anime == null
-          ? const LoadingIndicator(message: 'Loading details…')
-          : detailsState.hasError && anime == null
-              ? ErrorView(
-                  failure: detailsState.error!.asFailure,
-                  onRetry: () => ref.invalidate(animeDetailsProvider(animeId)),
-                )
-              : CustomScrollView(
-                  slivers: [
-                    _DetailsHeader(anime: anime!),
-                    _FavoriteAndMeta(anime: anime),
-                    _SynopsisSection(anime: anime),
-                    _EpisodesSection(
-                      state: episodesState,
-                      onTapEpisode: (e) => _openPlayer(context, e),
-                      onRetry: () =>
-                          ref.invalidate(animeEpisodesProvider(animeId)),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                  ],
-                ),
-    );
-  }
+    if (detailsState.isLoading && anime == null) {
+      return const Scaffold(
+        body: LoadingIndicator(message: 'Loading details…'),
+      );
+    }
+    if (detailsState.hasError && anime == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: ErrorView(
+          failure: detailsState.error!.asFailure,
+          onRetry: () => ref.invalidate(animeDetailsProvider(animeId)),
+        ),
+      );
+    }
 
-  void _openPlayer(BuildContext context, Episode episode) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => VideoPlayerScreen(episode: episode)),
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          _DetailsHeader(anime: anime!),
+          _MetaAndFavorite(anime: anime),
+          _SynopsisSection(anime: anime),
+          _EpisodesSectionHeader(animeId: animeId),
+          _EpisodesSliver(animeId: animeId),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+        ],
+      ),
     );
   }
 }
 
-/// Collapsing app bar showing the cover art.
+/// Collapsing app bar with the cover art.
 class _DetailsHeader extends StatelessWidget {
   const _DetailsHeader({required this.anime});
 
@@ -89,7 +91,6 @@ class _DetailsHeader extends StatelessWidget {
               CachedNetworkImage(imageUrl: anime.coverUrl, fit: BoxFit.cover)
             else
               const ColoredBox(color: Colors.white10),
-            // Gradient so the title stays legible over the artwork.
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -106,9 +107,9 @@ class _DetailsHeader extends StatelessWidget {
   }
 }
 
-/// Rating, episode count and the favorite toggle.
-class _FavoriteAndMeta extends ConsumerWidget {
-  const _FavoriteAndMeta({required this.anime});
+/// Rating, episode count, and the authenticated favorite toggle.
+class _MetaAndFavorite extends ConsumerWidget {
+  const _MetaAndFavorite({required this.anime});
 
   final Anime anime;
 
@@ -134,17 +135,38 @@ class _FavoriteAndMeta extends ConsumerWidget {
             ],
             const Spacer(),
             FilledButton.tonalIcon(
-              onPressed: () =>
-                  ref.read(favoritesProvider.notifier).toggle(anime),
-              icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-              ),
-              label: Text(isFavorite ? 'Saved' : 'Save'),
+              onPressed: () => _toggleFavorite(context, ref),
+              icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+              label: Text(isFavorite ? 'Saved' : 'Add to Favorites'),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Requires authentication: if signed out, routes to the auth screen first,
+  /// then performs the cloud add/remove and surfaces any error via SnackBar.
+  Future<void> _toggleFavorite(BuildContext context, WidgetRef ref) async {
+    if (!ref.read(isAuthenticatedProvider)) {
+      final signedIn = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+      );
+      if (signedIn != true) return;
+    }
+
+    try {
+      await ref.read(favoritesProvider.notifier).toggle(anime);
+      if (context.mounted) {
+        final saved = ref.read(isFavoriteProvider(anime.id));
+        AppSnackBar.showMessage(
+          context,
+          saved ? 'Added to Favorites' : 'Removed from Favorites',
+        );
+      }
+    } on Failure catch (failure) {
+      if (context.mounted) AppSnackBar.showFailure(context, failure);
+    }
   }
 }
 
@@ -176,15 +198,10 @@ class _SynopsisSection extends StatelessWidget {
               ),
             if (anime.synopsis.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text(
-                'Synopsis',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Synopsis', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 6),
-              Text(
-                anime.synopsis,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text(anime.synopsis,
+                  style: Theme.of(context).textTheme.bodyMedium),
             ],
           ],
         ),
@@ -193,39 +210,78 @@ class _SynopsisSection extends StatelessWidget {
   }
 }
 
-/// The vertical episode list (its own Loading / Success / Error states).
-class _EpisodesSection extends StatelessWidget {
-  const _EpisodesSection({
-    required this.state,
-    required this.onTapEpisode,
-    required this.onRetry,
-  });
+/// "Episodes" title with the language toggle on the right.
+class _EpisodesSectionHeader extends ConsumerWidget {
+  const _EpisodesSectionHeader({required this.animeId});
 
-  final AsyncValue<List<Episode>> state;
-  final void Function(Episode) onTapEpisode;
-  final VoidCallback onRetry;
+  final String animeId;
 
   @override
-  Widget build(BuildContext context) {
-    return state.when(
-      loading: () => const SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(selectedLanguageProvider);
+
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+        child: Row(
+          children: [
+            Text(
+              'Episodes',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const Spacer(),
+            LanguageToggle(
+              selected: selected,
+              // Updating state re-keys the episodes family below, which
+              // triggers a fetch for the newly-selected language.
+              onChanged: (lang) =>
+                  ref.read(selectedLanguageProvider.notifier).state = lang,
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// The episode list for the selected language (Loading / Success / Error).
+class _EpisodesSliver extends ConsumerWidget {
+  const _EpisodesSliver({required this.animeId});
+
+  final String animeId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final language = ref.watch(selectedLanguageProvider);
+    final episodesState =
+        ref.watch(animeEpisodesProvider(EpisodeQuery(animeId, language)));
+
+    return episodesState.when(
+      loading: () => SliverToBoxAdapter(child: ShimmerLoaders.episodeList()),
       error: (error, _) => SliverToBoxAdapter(
         child: SizedBox(
-          height: 200,
-          child: ErrorView(failure: error.asFailure, onRetry: onRetry),
+          height: 220,
+          child: ErrorView(
+            failure: error.asFailure,
+            onRetry: () => ref.invalidate(
+              animeEpisodesProvider(EpisodeQuery(animeId, language)),
+            ),
+          ),
         ),
       ),
       data: (episodes) {
         if (episodes.isEmpty) {
-          return const SliverToBoxAdapter(
+          return SliverToBoxAdapter(
             child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Center(child: Text('No episodes available yet.')),
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  'No ${language.label} episodes available yet.',
+                ),
+              ),
             ),
           );
         }
@@ -233,10 +289,16 @@ class _EpisodesSection extends StatelessWidget {
           itemCount: episodes.length,
           itemBuilder: (_, i) => EpisodeTile(
             episode: episodes[i],
-            onTap: () => onTapEpisode(episodes[i]),
+            onTap: () => _openPlayer(context, episodes[i]),
           ),
         );
       },
+    );
+  }
+
+  void _openPlayer(BuildContext context, Episode episode) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => VideoPlayerScreen(episode: episode)),
     );
   }
 }

@@ -3,13 +3,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
 import 'bootstrap.dart';
+import 'core/providers/core_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize local storage (Hive) before building the app.
-  await bootstrap();
+  // Initialize local storage (Hive) and secure token storage before the UI.
+  final result = await bootstrap();
 
-  // ProviderScope makes Riverpod available to the whole widget tree.
-  runApp(const ProviderScope(child: AnimeWatcherApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        // Inject the preloaded TokenStorage so the JWT interceptor is ready.
+        tokenStorageProvider.overrideWithValue(result.tokenStorage),
+      ],
+      child: const AnimeWatcherApp(),
+    ),
+  );
 }

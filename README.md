@@ -10,11 +10,35 @@ backend that scrapes sources on the fly, then plays MP4/HLS streams with
 | Concern            | Choice |
 | ------------------ | ------ |
 | Framework          | Flutter (Dart 3, null-safe) |
-| Networking         | `dio` (interceptors for error mapping, timeouts, logging) |
+| Networking         | `dio` (interceptors for JWT auth, error mapping, timeouts, logging) |
 | State management   | `flutter_riverpod` (`AsyncValue` for Loading/Success/Error) |
 | Video player       | `better_player` (MP4 + HLS/m3u8) |
-| Local database     | `hive` (Favorites / Library) |
+| Secure storage     | `flutter_secure_storage` (JWT for Cloud Sync) |
+| Local database     | `hive` (offline favorites cache) |
+| Loading UI         | `shimmer` (skeleton placeholders) |
 | Image caching      | `cached_network_image` |
+
+## Cloud Sync (Authentication)
+
+`TokenStorage` persists the JWT in the platform keystore via
+`flutter_secure_storage` and keeps an in-memory copy so `AuthInterceptor` can
+attach `Authorization: Bearer <token>` **synchronously** on every request.
+Public endpoints (`login` / `register`) opt out via
+`AuthInterceptor.skipAuth()`, and a `401` clears the token so the app can
+prompt for re-auth. `AuthRepository` exposes `login`, `register`, `logout` and
+`restoreSession`; `AuthController` surfaces auth state as
+`AsyncValue<AuthUser?>`.
+
+Favorites are cloud-backed (authenticated) with the local Hive box acting as an
+offline cache: reads hit the cloud and mirror to the cache, and the grid falls
+back to the cache when offline.
+
+## Language Toggle (Arabic / English)
+
+The Details screen shows a custom segmented `LanguageToggle` above the episode
+list. Selecting a language updates `selectedLanguageProvider`, which re-keys the
+`animeEpisodesProvider` family (`EpisodeQuery(animeId, language)`) and refetches
+the episode servers with `?lang=ar|en`.
 
 ## Architecture
 
@@ -129,5 +153,12 @@ Point the app at your backend by editing `ApiConstants.baseUrl` in
 | `GET /anime/trending`          | Trending anime |
 | `GET /categories`              | Category names |
 | `GET /anime/{id}`              | Anime details |
-| `GET /anime/{id}/episodes`     | Episode list |
+| `GET /anime/{id}/episodes?lang=ar\|en` | Episode list for the language |
 | `GET /stream/{episodeId}`      | `{ url, format, headers, quality }` |
+| `POST /auth/login`             | `{ token, user }` |
+| `POST /auth/register`          | `{ token, user }` |
+| `POST /auth/logout`            | Invalidate session (authenticated) |
+| `GET /auth/me`                 | Current user (authenticated) |
+| `GET /favorites`               | User's saved anime (authenticated) |
+| `POST /favorites/{animeId}`    | Add favorite (authenticated) |
+| `DELETE /favorites/{animeId}`  | Remove favorite (authenticated) |
