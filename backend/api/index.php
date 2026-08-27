@@ -87,6 +87,11 @@ $routes = [
 
     // Video source scraping
     [['GET'],                      '/episodes/sources',    $dir . '/episodes/sources.php'],
+
+    // Test-only fixture for the Arabic source pipeline (gated by
+    // ENABLE_TEST_SOURCE_PAGE inside the handler; 404s when disabled).
+    [['GET'],                      '/test/source-page/{episodeId}', $dir . '/test/source_page.php'],
+    [['GET'],                      '/test/source-page',    $dir . '/test/source_page.php'],
 ];
 
 // -----------------------------------------------------------------------------
