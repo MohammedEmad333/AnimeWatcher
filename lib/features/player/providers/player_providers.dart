@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:better_player/better_player.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error/failures.dart';

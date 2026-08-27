@@ -64,6 +64,8 @@ class ErrorInterceptor extends Interceptor {
       DioExceptionType.unknown => _isNoConnection(err)
           ? const NetworkException()
           : const ServerException('Unexpected network error.'),
+      // Covers any future/added DioExceptionType values (e.g. transformTimeout).
+      _ => const ServerException('Unexpected network error.'),
     };
 
     // Re-emit the original DioException but attach our typed error so callers
@@ -91,7 +93,7 @@ class ErrorInterceptor extends Interceptor {
     if (data is Map && data['message'] is String) {
       return data['message'] as String;
     }
-    return switch (status) {
+    return switch (status ?? 0) {
       400 => 'Bad request.',
       401 => 'You are not authorized.',
       403 => 'Access to this resource is forbidden.',
