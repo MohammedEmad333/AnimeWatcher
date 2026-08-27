@@ -123,19 +123,32 @@ class PlayerController extends StateNotifier<PlayerState> {
       // re-scrape) when it's still offered; otherwise fall back to the
       // preferred (first) source.
       _selected = _pickSource(links, _selected);
+      final selected = _selected!;
+
+      // Embed sources have no direct media URL and no exposable playback
+      // position → render in a WebView, with no native controller or resume.
+      if (selected.format.isEmbed) {
+        state = PlayerEmbed(
+          url: selected.url,
+          headers: selected.headers,
+          sources: _sources,
+          selected: selected,
+        );
+        return;
+      }
 
       // Best-effort resume lookup; never blocks playback on failure.
       _resumeSeconds = await _fetchResume();
       if (_disposed) return;
 
-      final controller = _buildController(_selected!);
+      final controller = _buildController(selected);
       _controller = controller;
       controller.addEventsListener(_onPlayerEvent);
 
       state = PlayerReady(
         controller: controller,
         sources: _sources,
-        selected: _selected!,
+        selected: selected,
       );
     } on Failure catch (failure) {
       if (!_disposed) state = PlayerError(failure);
@@ -162,7 +175,8 @@ class PlayerController extends StateNotifier<PlayerState> {
     if (_selected != null && _selected!.url == link.url) return;
     if (!_sources.contains(link)) return;
 
-    // Carry the current position over to the new server.
+    // Carry the current position over to the new server (direct→direct only;
+    // embeds expose no position, so this is 0 when switching to/from one).
     final position = _controller?.videoPlayerController?.value.position;
     _resumeSeconds = position?.inSeconds ?? 0;
     _hasSeeked = false;
@@ -171,13 +185,20 @@ class PlayerController extends StateNotifier<PlayerState> {
     _autoRescrapes = 0;
     _selected = link;
 
-    // Dispose only the current controller; keep the resolved source list and
-    // the in-flight resume position. better_player shows its own buffering
-    // placeholder, so no PlayerLoading flash is needed for a local swap.
-    _syncTimer?.cancel();
-    _syncTimer = null;
-    _controller?.removeEventsListener(_onPlayerEvent);
-    _controller?.dispose();
+    // Dispose only the current native controller (if any); keep the resolved
+    // source list. better_player shows its own buffering placeholder, so no
+    // PlayerLoading flash is needed for a local swap.
+    _disposeController();
+
+    if (link.format.isEmbed) {
+      state = PlayerEmbed(
+        url: link.url,
+        headers: link.headers,
+        sources: _sources,
+        selected: link,
+      );
+      return;
+    }
 
     final controller = _buildController(link);
     _controller = controller;
@@ -188,6 +209,18 @@ class PlayerController extends StateNotifier<PlayerState> {
       sources: _sources,
       selected: link,
     );
+  }
+
+  /// Disposes just the native controller and its sync timer, leaving the
+  /// resolved source list and resume bookkeeping intact — used when swapping
+  /// sources locally (distinct from [_teardownPlayback], which also cancels the
+  /// in-flight resolve request).
+  void _disposeController() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _controller?.removeEventsListener(_onPlayerEvent);
+    _controller?.dispose();
+    _controller = null;
   }
 
   /// Picks which source to attach after a resolve: prefer the user's previously

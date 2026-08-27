@@ -18,29 +18,55 @@ class PlayerLoading extends PlayerState {
   const PlayerLoading();
 }
 
-/// A playable controller is ready and attached.
-///
-/// Carries the full list of resolved [sources] and the currently [selected]
-/// one so the screen can render a server/quality picker and let the user switch
-/// between servers mid-playback.
-class PlayerReady extends PlayerState {
-  const PlayerReady({
-    required this.controller,
-    required this.sources,
-    required this.selected,
-  });
-
-  final BetterPlayerController controller;
+/// Shared base for the "playing" states ([PlayerReady] for direct media,
+/// [PlayerEmbed] for iframe/web embeds). Carries the full list of resolved
+/// [sources] and the currently [selected] one so the screen can render a
+/// server/quality picker and let the user switch between servers mid-playback,
+/// regardless of how the current source is being played.
+sealed class PlayerReadyState extends PlayerState {
+  const PlayerReadyState({required this.sources, required this.selected});
 
   /// Every source the backend resolved, in preference order.
   final List<StreamLink> sources;
 
-  /// The source currently attached to [controller].
+  /// The source currently being played.
   final StreamLink selected;
 
   /// Whether there's more than one source to choose between (drives whether the
   /// picker affordance is shown at all).
   bool get hasChoice => sources.length > 1;
+}
+
+/// Direct media (mp4 / HLS) is ready and attached to a native [controller].
+class PlayerReady extends PlayerReadyState {
+  const PlayerReady({
+    required this.controller,
+    required super.sources,
+    required super.selected,
+  });
+
+  final BetterPlayerController controller;
+}
+
+/// The selected source is an iframe/web embed with no direct media URL, so it's
+/// played in a WebView rather than the native player.
+///
+/// Embeds expose no playback position, so resume/sync is unavailable for this
+/// state — a deliberate limitation kept out of the sync path in the controller.
+class PlayerEmbed extends PlayerReadyState {
+  const PlayerEmbed({
+    required this.url,
+    required this.headers,
+    required super.sources,
+    required super.selected,
+  });
+
+  /// The embed page URL to load in the WebView.
+  final String url;
+
+  /// Headers to send with the initial WebView request (e.g. Referer) so the
+  /// embed host accepts it.
+  final Map<String, String> headers;
 }
 
 /// The resolve succeeded but the episode has no playable sources right now.
