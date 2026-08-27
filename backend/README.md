@@ -28,8 +28,24 @@ php -S localhost:8000
 ```
 
 The Flutter client's `ApiConstants.baseUrl` should point at this host (e.g.
-`http://10.0.2.2:8000/api` from the Android emulator). Endpoints map to the
-`.php` files under `api/`.
+`http://10.0.2.2:8000/api` from the Android emulator).
+
+### Clean URLs (front controller)
+
+All traffic under `/api/*` is routed through a single front controller
+(`api/index.php`) by `.htaccess`, so endpoints have clean, extension-less URLs
+(`POST /api/auth/login`, `GET /api/anime/details/21`). CORS headers, `OPTIONS`
+preflight and the JWT middleware are applied uniformly for every routed
+endpoint. The underlying `.php` files remain individually addressable too (the
+rewrite only kicks in when a request doesn't map to a real file), so nothing
+that worked before is broken.
+
+> Apache's built-in dev server (`php -S`) ignores `.htaccess`. To exercise the
+> clean URLs locally, run the front controller as the router script:
+>
+> ```bash
+> php -S localhost:8000 api/index.php
+> ```
 
 ## Directory structure
 
@@ -48,17 +64,27 @@ backend/
 ├── src/
 │   ├── bootstrap.php          # One include: config + db + jwt + response + CORS
 │   ├── Jwt.php                # HS256 encode/verify (constant-time)
-│   └── Response.php           # JSON envelope + input helpers
+│   ├── Response.php           # JSON envelope + input helpers
+│   ├── JikanClient.php        # Jikan (MyAnimeList) proxy + disk cache
+│   └── ScraperService.php     # Modular video-source resolver (mock + real hooks)
 │
 ├── middleware/
 │   └── auth_middleware.php    # require_auth(): validates Bearer JWT → user id
 │
+├── cache/                     # Cached Jikan responses (gitignored, auto-created)
+│
 ├── api/
+│   ├── index.php              # Front controller / router (clean URLs)
 │   ├── auth/
 │   │   ├── register.php       # POST  create user, hash password, issue JWT
 │   │   ├── login.php          # POST  verify credentials, issue JWT
 │   │   ├── logout.php         # POST  (protected) acknowledge logout
 │   │   └── me.php             # GET   (protected) current user
+│   ├── anime/
+│   │   ├── trending.php       # GET   popular titles (Jikan proxy + cache)
+│   │   └── details.php        # GET   one title by id (Jikan proxy + cache)
+│   ├── episodes/
+│   │   └── sources.php        # GET   scraped video sources for an episode
 │   ├── favorites/
 │   │   └── index.php          # GET/POST/DELETE (protected) — uses middleware
 │   └── history/
@@ -85,18 +111,35 @@ Auth success payload: `{ "token": "<jwt>", "user": { "id", "name", "email" } }`.
 
 | Method | Path                        | Auth | Body |
 | ------ | --------------------------- | ---- | ---- |
-| POST   | `/api/auth/register.php`    | —    | `{ name, email, password }` |
-| POST   | `/api/auth/login.php`       | —    | `{ email, password }` |
-| POST   | `/api/auth/logout.php`      | ✔    | — |
-| GET    | `/api/auth/me.php`          | ✔    | — |
-| GET    | `/api/favorites/index.php`  | ✔    | — |
-| POST   | `/api/favorites/index.php`  | ✔    | `{ anime_id, title, cover_image }` |
-| DELETE | `/api/favorites/index.php`  | ✔    | `{ anime_id }` |
-| GET    | `/api/history/index.php`    | ✔    | — (full history list) |
-| GET    | `/api/history/index.php?anime_id=..&episode_id=..` | ✔ | — (resume position) |
-| POST   | `/api/history/index.php`    | ✔    | `{ anime_id, episode_id, playback_time }` |
+| POST   | `/api/auth/register`        | —    | `{ name, email, password }` |
+| POST   | `/api/auth/login`           | —    | `{ email, password }` |
+| POST   | `/api/auth/logout`          | ✔    | — |
+| GET    | `/api/auth/me`              | ✔    | — |
+| GET    | `/api/anime/trending?limit=20` | — | — (Jikan proxy + cache) |
+| GET    | `/api/anime/details/{id}`   | —    | — (Jikan proxy + cache) |
+| GET    | `/api/episodes/sources?episode_id=..&lang={ar\|en}` | — | — (scraped sources) |
+| GET    | `/api/favorites`            | ✔    | — |
+| POST   | `/api/favorites`            | ✔    | `{ anime_id, title, cover_image }` |
+| DELETE | `/api/favorites`            | ✔    | `{ anime_id }` |
+| GET    | `/api/history`              | ✔    | — (full history list) |
+| GET    | `/api/history?anime_id=..&episode_id=..` | ✔ | — (resume position) |
+| POST   | `/api/history`              | ✔    | `{ anime_id, episode_id, playback_time }` |
 
 `✔` = requires `Authorization: Bearer <jwt>`.
+
+### Catalog & scraping
+
+- **`GET /api/anime/trending`** and **`GET /api/anime/details/{id}`** proxy the
+  public [Jikan](https://jikan.moe) API (MyAnimeList) and cache each upstream
+  response on disk (`cache/`, TTL `CACHE_TTL`, default 6h) to stay fast and
+  under Jikan's rate limits. Responses are normalized to the Flutter `Anime`
+  shape: `{ id, title, cover_url, synopsis, rating, genres[], episode_count }`.
+- **`GET /api/episodes/sources?episode_id=..&lang=..`** returns a
+  preference-ordered `sources` list from `src/ScraperService.php`
+  (`{ server, url, format: hls|mp4, quality, headers }`). The service currently
+  returns **mock** `.mp4` / `.m3u8` links; each per-server `scrapeFrom*()`
+  method carries a commented sketch showing exactly where to inject real
+  cURL + `DOMDocument`/`DOMXPath` parsing for a target site.
 
 ## Security notes
 

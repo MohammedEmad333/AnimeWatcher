@@ -1,11 +1,27 @@
-# Ensure the Authorization header reaches PHP (Apache often strips it).
+# AnimeWatcher API — Apache configuration
+# =========================================
+# Serve the backend/ folder as the document root. All /api/* traffic is routed
+# through the front controller (api/index.php) so endpoints get clean URLs
+# (e.g. POST /api/auth/login, GET /api/anime/details/21).
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Ensure the Authorization header reaches PHP (Apache often strips it),
+    # so the JWT middleware can read the Bearer token behind the router.
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # Front controller: send every /api/* request to api/index.php UNLESS it
+    # maps to a real file (keeps direct `.php` access and static assets working
+    # and lets the router own the clean, extension-less URLs). QSA preserves the
+    # query string (e.g. ?episode_id=..&lang=en); L stops further rewriting.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^api(/.*)?$ api/index.php [QSA,L]
 </IfModule>
 
-# Alternative for some CGI/FastCGI setups:
+# Alternative for some CGI/FastCGI setups that don't expose the header above:
 SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 
 # Never serve the environment file.

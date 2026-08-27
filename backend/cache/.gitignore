@@ -1,0 +1,4 @@
+# Cached upstream (Jikan) responses live here and must not be committed.
+# The directory itself is kept so the app can write to it out of the box.
+*
+!.gitignore

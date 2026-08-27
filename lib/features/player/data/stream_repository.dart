@@ -12,11 +12,13 @@ class StreamRepository {
 
   Future<StreamLink> resolveStreamLink(
     String episodeId, {
+    String languageCode = 'ar',
     CancelToken? cancelToken,
   }) async {
     try {
       final link = await _remote.resolveStreamLink(
         episodeId,
+        languageCode: languageCode,
         cancelToken: cancelToken,
       );
       if (link.url.isEmpty) {
