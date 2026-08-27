@@ -42,6 +42,15 @@ class ApiConstants {
   static const String jikanBaseUrl = 'https://api.jikan.moe/v4';
   static const String jikanTopAnime = '/top/anime';
 
+  /// Recently aired episodes across all series (`GET /watch/episodes`).
+  /// Sourced directly from Jikan so the Home "Latest Episodes" feed stays
+  /// functional regardless of the backend host's outbound-request policy.
+  static const String jikanWatchEpisodes = '/watch/episodes';
+
+  /// Anime genres / categories (`GET /genres/anime`). Powers the Home
+  /// "Categories" chips, again sourced directly from Jikan.
+  static const String jikanGenres = '/genres/anime';
+
   /// Full details for one title on Jikan: `/anime/{id}/full`.
   static String jikanAnimeFull(String id) => '/anime/$id/full';
 
