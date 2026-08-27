@@ -5,6 +5,7 @@ import '../constants/api_constants.dart';
 import '../error/exceptions.dart';
 import 'api_interceptors.dart';
 import 'auth_interceptor.dart';
+import 'retry_interceptor.dart';
 
 /// Thin, testable wrapper around a configured [Dio] instance.
 ///
@@ -26,10 +27,15 @@ class DioClient {
         'Content-Type': 'application/json',
       };
 
-    // Order matters: Auth injects the header first; Error maps failures on the
-    // way back out; Logging observes everything.
+    // Order matters: Auth injects the header first; Retry re-dispatches
+    // transient GET failures (5xx/timeout/429) with backoff before they're
+    // mapped — this also makes on-the-fly source scraping more resilient to a
+    // flaky upstream; Error maps failures on the way back out; Logging observes
+    // everything. Retry is GET-only, so authenticated POST/DELETE writes
+    // (favorites/history) are never repeated.
     _dio.interceptors.addAll([
       AuthInterceptor(tokenStorage),
+      RetryInterceptor(dio: _dio),
       ErrorInterceptor(),
       LoggingInterceptor(),
     ]);
