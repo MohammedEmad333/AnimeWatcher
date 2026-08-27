@@ -73,6 +73,9 @@ class WitAnimeScraper
                     'url'     => str_starts_with($src, '//') ? 'https:' . $src : $src,
                     'quality' => 'auto',
                     'format'  => str_contains($src, '.m3u8') ? 'hls' : 'embed',
+                    // Many embed hosts / CDNs reject requests without a Referer
+                    // from the origin site; forward it so better_player can play.
+                    'headers' => ['Referer' => $this->baseUrl . '/'],
                 ];
             }
         }

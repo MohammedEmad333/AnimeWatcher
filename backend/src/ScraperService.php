@@ -2,6 +2,11 @@
 
 declare(strict_types=1);
 
+// No Composer autoloader in this backend — classes are pulled in explicitly.
+// ScraperService delegates the Arabic branch to WitAnimeScraper, so make sure
+// it's loaded. require_once is a no-op if an endpoint already included it.
+require_once __DIR__ . '/WitAnimeScraper.php';
+
 /**
  * ScraperService — resolves playable video sources for an episode.
  * ----------------------------------------------------------------
@@ -55,6 +60,27 @@ final class ScraperService
     public function getSources(string $episodeId, string $lang): array
     {
         if ($lang === 'ar') {
+            // Preferred path: a WitAnime-style id carrying the title slug and the
+            // episode number as "{slug}|{episodeNumber}" (e.g.
+            // "rakudai-kenja-...-boukenroku|1"). WitAnimeScraper builds the
+            // "/episode/{slug}-الحلقة-{n}/" watch URL itself.
+            if (str_contains($episodeId, '|')) {
+                [$slug, $numRaw] = explode('|', $episodeId, 2);
+                $slug = trim($slug);
+                $episodeNumber = (int) trim($numRaw);
+
+                if ($slug !== '' && $episodeNumber > 0) {
+                    $base = env('ARABIC_SOURCE_BASE_URL');
+                    $scraper = ($base !== null && $base !== '')
+                        ? new WitAnimeScraper($base)
+                        : new WitAnimeScraper();
+
+                    return $scraper->getEpisodeSources($slug, $episodeNumber);
+                }
+            }
+
+            // Fallback: raw id → the generic "{base}/{episodeId}" fetch-and-parse
+            // pipeline, preserving the previous behaviour for non-slug ids.
             return $this->scrapeArabicSources($episodeId);
         }
 
