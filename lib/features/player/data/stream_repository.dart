@@ -10,26 +10,29 @@ class StreamRepository {
 
   final StreamRemoteDataSource _remote;
 
-  /// Resolves a playable link, or `null` when the episode has no sources.
+  /// Resolves every playable source for an episode, or an empty list when it
+  /// has none.
   ///
   /// Genuine failures are rethrown as typed [Failure]s; a successful resolve
-  /// that yields no (or only blank) sources returns `null` so the player can
-  /// show a dedicated "No streaming sources available" state.
-  Future<StreamLink?> resolveStreamLink(
+  /// that yields no (or only blank) sources returns an empty list so the player
+  /// can show a dedicated "No streaming sources available" state. The order
+  /// follows the backend's server preference, so `sources.first` is the default
+  /// pick and the full list feeds the server/quality picker.
+  Future<List<StreamLink>> resolveStreamLinks(
     String episodeId, {
     String languageCode = 'ar',
     CancelToken? cancelToken,
   }) async {
     try {
-      final link = await _remote.resolveStreamLink(
+      final links = await _remote.resolveStreamLinks(
         episodeId,
         languageCode: languageCode,
         cancelToken: cancelToken,
       );
-      if (link == null || link.url.isEmpty) {
-        return null; // no playable source — not an error
-      }
-      return link;
+      return [
+        for (final link in links)
+          if (link.url.isNotEmpty) link,
+      ];
     } on Failure {
       rethrow;
     } catch (e) {

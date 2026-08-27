@@ -82,6 +82,12 @@ class PlayerController extends StateNotifier<PlayerState> {
   bool _hasSeeked = false;
   bool _disposed = false;
 
+  /// Every source resolved for the current episode, in backend-preference
+  /// order, plus the one currently attached to the controller. These drive the
+  /// server/quality picker and let a user switch servers mid-playback.
+  List<StreamLink> _sources = const [];
+  StreamLink? _selected;
+
   /// Auto re-scrape bookkeeping for expired/temporary links.
   int _autoRescrapes = 0;
   bool _recovering = false;
@@ -96,7 +102,7 @@ class PlayerController extends StateNotifier<PlayerState> {
     if (!_disposed) state = const PlayerLoading();
 
     try {
-      final link = await _streamRepository.resolveStreamLink(
+      final links = await _streamRepository.resolveStreamLinks(
         episode.id,
         languageCode: _languageCode,
         cancelToken: _cancelToken,
@@ -105,20 +111,32 @@ class PlayerController extends StateNotifier<PlayerState> {
 
       // Resolved successfully but nothing is playable → dedicated empty state
       // (with Retry), kept distinct from the red error state below.
-      if (link == null) {
+      if (links.isEmpty) {
+        _sources = const [];
+        _selected = null;
         state = const PlayerNoSources();
         return;
       }
+
+      _sources = links;
+      // Keep the user's chosen server across re-resolves (Retry / auto
+      // re-scrape) when it's still offered; otherwise fall back to the
+      // preferred (first) source.
+      _selected = _pickSource(links, _selected);
 
       // Best-effort resume lookup; never blocks playback on failure.
       _resumeSeconds = await _fetchResume();
       if (_disposed) return;
 
-      final controller = _buildController(link);
+      final controller = _buildController(_selected!);
       _controller = controller;
       controller.addEventsListener(_onPlayerEvent);
 
-      state = PlayerReady(controller);
+      state = PlayerReady(
+        controller: controller,
+        sources: _sources,
+        selected: _selected!,
+      );
     } on Failure catch (failure) {
       if (!_disposed) state = PlayerError(failure);
     } catch (e) {
@@ -130,6 +148,60 @@ class PlayerController extends StateNotifier<PlayerState> {
   Future<void> retry() {
     _autoRescrapes = 0;
     return load();
+  }
+
+  /// Switches playback to a different already-resolved [link] (e.g. the user
+  /// picked another server/quality). Resumes at the current playback position
+  /// so switching servers doesn't lose the user's place, and no re-scrape is
+  /// needed since every source was resolved up front.
+  ///
+  /// A no-op when [link] is already selected or isn't one of the resolved
+  /// sources.
+  void selectSource(StreamLink link) {
+    if (_disposed) return;
+    if (_selected != null && _selected!.url == link.url) return;
+    if (!_sources.contains(link)) return;
+
+    // Carry the current position over to the new server.
+    final position = _controller?.videoPlayerController?.value.position;
+    _resumeSeconds = position?.inSeconds ?? 0;
+    _hasSeeked = false;
+    // A deliberate switch is a fresh, working start — refill the re-scrape
+    // budget so an expiry on the new server gets its own attempts.
+    _autoRescrapes = 0;
+    _selected = link;
+
+    // Dispose only the current controller; keep the resolved source list and
+    // the in-flight resume position. better_player shows its own buffering
+    // placeholder, so no PlayerLoading flash is needed for a local swap.
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _controller?.removeEventsListener(_onPlayerEvent);
+    _controller?.dispose();
+
+    final controller = _buildController(link);
+    _controller = controller;
+    controller.addEventsListener(_onPlayerEvent);
+
+    state = PlayerReady(
+      controller: controller,
+      sources: _sources,
+      selected: link,
+    );
+  }
+
+  /// Picks which source to attach after a resolve: prefer the user's previously
+  /// [current] selection (matched by url, else by server label) when it's still
+  /// available, otherwise the backend's first/preferred source.
+  StreamLink _pickSource(List<StreamLink> links, StreamLink? current) {
+    if (current == null) return links.first;
+    return links.firstWhere(
+      (l) => l.url == current.url,
+      orElse: () => links.firstWhere(
+        (l) => l.server == current.server,
+        orElse: () => links.first,
+      ),
+    );
   }
 
   /// Handles a mid-playback failure (typically an expired/temporary scraped

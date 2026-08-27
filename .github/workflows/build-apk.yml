@@ -50,12 +50,21 @@ jobs:
       - name: Build release APK
         run: flutter build apk --release
 
-      - name: Upload APKs
+      # Upload each build as its own artifact so they download as separate
+      # zips. Install the release APK for normal use; the debug APK is only
+      # for development/debugging.
+      - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: animewatcher-apk
-          path: |
-            build/app/outputs/flutter-apk/app-debug.apk
-            build/app/outputs/flutter-apk/app-release.apk
+          name: animewatcher-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: animewatcher-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 30
