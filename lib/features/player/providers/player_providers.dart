@@ -9,6 +9,7 @@ import '../../../core/providers/core_providers.dart';
 import '../../../shared/models/episode.dart';
 import '../../../shared/models/stream_link.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../catalog/providers/catalog_providers.dart';
 import '../../history/data/history_repository.dart';
 import '../../history/providers/history_providers.dart';
 import '../data/stream_remote_datasource.dart';
@@ -44,9 +45,11 @@ class PlayerController extends StateNotifier<PlayerState> {
     required HistoryRepository historyRepository,
     required this.episode,
     required bool syncEnabled,
+    required String languageCode,
   })  : _streamRepository = streamRepository,
         _historyRepository = historyRepository,
         _syncEnabled = syncEnabled,
+        _languageCode = languageCode,
         super(const PlayerLoading()) {
     load();
   }
@@ -57,6 +60,9 @@ class PlayerController extends StateNotifier<PlayerState> {
 
   /// Whether resume/sync is active (only when the user is signed in).
   final bool _syncEnabled;
+
+  /// Content language (`ar` / `en`) sent to the source-resolution endpoint.
+  final String _languageCode;
 
   BetterPlayerController? _controller;
   CancelToken? _cancelToken;
@@ -76,6 +82,7 @@ class PlayerController extends StateNotifier<PlayerState> {
     try {
       final link = await _streamRepository.resolveStreamLink(
         episode.id,
+        languageCode: _languageCode,
         cancelToken: _cancelToken,
       );
       if (_disposed) return;
@@ -224,5 +231,6 @@ final playerControllerProvider = StateNotifierProvider.autoDispose
     historyRepository: ref.watch(historyRepositoryProvider),
     episode: episode,
     syncEnabled: ref.watch(isAuthenticatedProvider),
+    languageCode: ref.watch(selectedLanguageProvider).code,
   ),
 );

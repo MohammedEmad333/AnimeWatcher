@@ -33,11 +33,16 @@ class ApiConstants {
   // Catalog endpoints
   // ---------------------------------------------------------------------------
   static const String latestEpisodes = '/episodes/latest';
+
+  /// Trending / popular titles for the home screen. Backend proxies + caches
+  /// the Jikan (MyAnimeList) API. Maps to `GET /api/anime/trending`.
   static const String trending = '/anime/trending';
   static const String categories = '/categories';
 
-  /// Details for a single anime: `/anime/{id}`.
-  static String animeDetails(String animeId) => '/anime/$animeId';
+  /// Details for a single anime: `GET /api/anime/details/{id}`.
+  ///
+  /// Backend proxies + caches Jikan's full-details endpoint.
+  static String animeDetails(String animeId) => '/anime/details/$animeId';
 
   /// Episode list for an anime: `/anime/{id}/episodes`.
   ///
@@ -45,10 +50,13 @@ class ApiConstants {
   /// returns the episode servers for the selected language.
   static String animeEpisodes(String animeId) => '/anime/$animeId/episodes';
 
-  /// On-the-fly stream resolution: `/stream/{episodeId}`.
+  /// On-the-fly video source resolution:
+  /// `GET /api/episodes/sources?episode_id={id}&lang={ar|en}`.
   ///
-  /// The backend scrapes the source and returns a direct, playable video URL.
-  static String streamLink(String episodeId) => '/stream/$episodeId';
+  /// The backend's ScraperService resolves one or more direct, playable links
+  /// (MP4 / HLS). Callers pass `episode_id` and `lang` as query parameters
+  /// (see [DioClient.get]), so this is a plain constant, not a builder.
+  static const String episodeSources = '/episodes/sources';
 
   // ---------------------------------------------------------------------------
   // Favorites endpoints (cloud, authenticated)

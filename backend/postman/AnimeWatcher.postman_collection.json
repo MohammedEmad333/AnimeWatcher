@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "AnimeWatcher API",
-    "description": "Auth, Favorites and Watch-History endpoints for the AnimeWatcher backend. Login/Register automatically capture {{jwt_token}}; all protected requests use it via collection-level Bearer auth. Set {{base_url}} in the environment (default http://localhost:8000).",
+    "description": "Auth, Favorites, Watch-History, Catalog (Jikan proxy) and Video-Source (scraping) endpoints for the AnimeWatcher backend. All requests use the clean, front-controller URLs (e.g. POST /api/auth/login) routed through api/index.php. Login/Register automatically capture {{jwt_token}}; all protected requests use it via collection-level Bearer auth. Set {{base_url}} in the environment (default http://localhost:8000).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -50,9 +50,9 @@
               "raw": "{\n  \"name\": \"Aya\",\n  \"email\": \"aya@example.com\",\n  \"password\": \"secret123\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/auth/register.php",
+              "raw": "{{base_url}}/api/auth/register",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "register.php"]
+              "path": ["api", "auth", "register"]
             }
           }
         },
@@ -88,9 +88,9 @@
               "raw": "{\n  \"email\": \"aya@example.com\",\n  \"password\": \"secret123\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/auth/login.php",
+              "raw": "{{base_url}}/api/auth/login",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login.php"]
+              "path": ["api", "auth", "login"]
             }
           }
         },
@@ -100,9 +100,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/auth/me.php",
+              "raw": "{{base_url}}/api/auth/me",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "me.php"]
+              "path": ["api", "auth", "me"]
             }
           }
         },
@@ -112,9 +112,65 @@
             "method": "POST",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/auth/logout.php",
+              "raw": "{{base_url}}/api/auth/logout",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "logout.php"]
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "item": [
+        {
+          "name": "Trending",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/anime/trending?limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "anime", "trending"],
+              "query": [
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Anime details",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/anime/details/21",
+              "host": ["{{base_url}}"],
+              "path": ["api", "anime", "details", "21"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Video Sources",
+      "item": [
+        {
+          "name": "Episode sources",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/episodes/sources?episode_id=21-1&lang=en",
+              "host": ["{{base_url}}"],
+              "path": ["api", "episodes", "sources"],
+              "query": [
+                { "key": "episode_id", "value": "21-1" },
+                { "key": "lang", "value": "en" }
+              ]
             }
           }
         }
@@ -129,9 +185,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/favorites/index.php",
+              "raw": "{{base_url}}/api/favorites",
               "host": ["{{base_url}}"],
-              "path": ["api", "favorites", "index.php"]
+              "path": ["api", "favorites"]
             }
           }
         },
@@ -148,9 +204,9 @@
               "raw": "{\n  \"anime_id\": \"1\",\n  \"title\": \"Cowboy Bebop\",\n  \"cover_image\": \"https://cdn.example.com/covers/1.jpg\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/favorites/index.php",
+              "raw": "{{base_url}}/api/favorites",
               "host": ["{{base_url}}"],
-              "path": ["api", "favorites", "index.php"]
+              "path": ["api", "favorites"]
             }
           }
         },
@@ -167,9 +223,9 @@
               "raw": "{\n  \"anime_id\": \"1\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/favorites/index.php",
+              "raw": "{{base_url}}/api/favorites",
               "host": ["{{base_url}}"],
-              "path": ["api", "favorites", "index.php"]
+              "path": ["api", "favorites"]
             }
           }
         }
@@ -184,9 +240,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/history/index.php",
+              "raw": "{{base_url}}/api/history",
               "host": ["{{base_url}}"],
-              "path": ["api", "history", "index.php"]
+              "path": ["api", "history"]
             }
           }
         },
@@ -196,9 +252,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/history/index.php?anime_id=1&episode_id=1-1",
+              "raw": "{{base_url}}/api/history?anime_id=1&episode_id=1-1",
               "host": ["{{base_url}}"],
-              "path": ["api", "history", "index.php"],
+              "path": ["api", "history"],
               "query": [
                 { "key": "anime_id", "value": "1" },
                 { "key": "episode_id", "value": "1-1" }
@@ -219,9 +275,9 @@
               "raw": "{\n  \"anime_id\": \"1\",\n  \"episode_id\": \"1-1\",\n  \"playback_time\": 125\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/history/index.php",
+              "raw": "{{base_url}}/api/history",
               "host": ["{{base_url}}"],
-              "path": ["api", "history", "index.php"]
+              "path": ["api", "history"]
             }
           }
         }
