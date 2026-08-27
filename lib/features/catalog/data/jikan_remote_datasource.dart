@@ -85,6 +85,30 @@ class JikanRemoteDataSource {
     }
   }
 
+  /// Currently-airing titles for the home screen's "newly added" rail
+  /// (`GET /top/anime?filter=airing`). Same shape as [getTrending], just a
+  /// different Jikan filter so the two poster rails show distinct titles.
+  Future<List<Anime>> getTopAiring({int limit = 20}) async {
+    try {
+      final response = await _dio.get<dynamic>(
+        ApiConstants.jikanTopAnime,
+        queryParameters: {
+          'filter': 'airing',
+          'limit': limit.clamp(1, 25),
+        },
+      );
+      final data = response.data;
+      final items = data is Map ? data['data'] : null;
+      if (items is! List) return const [];
+      return items
+          .whereType<Map>()
+          .map((e) => _mapAnime(e.cast<String, dynamic>()))
+          .toList();
+    } on DioException catch (e) {
+      throw _unwrap(e);
+    }
+  }
+
   /// Recently aired episodes across all series
   /// (`GET /watch/episodes`).
   ///

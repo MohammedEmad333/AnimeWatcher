@@ -27,6 +27,8 @@ class CatalogRepository {
 
   Future<List<Anime>> getTrending() => _guard(() => _jikan.getTrending());
 
+  Future<List<Anime>> getTopAiring() => _guard(() => _jikan.getTopAiring());
+
   Future<List<String>> getCategories() =>
       _guard(() => _jikan.getCategories());
 

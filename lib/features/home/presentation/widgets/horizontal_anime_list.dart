@@ -16,12 +16,17 @@ class HorizontalAnimeList extends StatelessWidget {
     required this.onTapAnime,
     required this.onRetry,
     this.height = 220,
+    this.subtitleBuilder,
   });
 
   final AsyncValue<List<Anime>> state;
   final void Function(Anime anime) onTapAnime;
   final VoidCallback onRetry;
   final double height;
+
+  /// Optional muted line shown under each card's title (e.g. the primary
+  /// genre). Returns null/empty to omit it for a given title.
+  final String? Function(Anime anime)? subtitleBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +49,11 @@ class HorizontalAnimeList extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (_, i) {
               final anime = animeList[i];
-              return AnimeCard(anime: anime, onTap: () => onTapAnime(anime));
+              return AnimeCard(
+                anime: anime,
+                onTap: () => onTapAnime(anime),
+                subtitle: subtitleBuilder?.call(anime),
+              );
             },
           );
         },
