@@ -30,18 +30,32 @@ class ApiConstants {
   static const String currentUser = '/auth/me';
 
   // ---------------------------------------------------------------------------
-  // Catalog endpoints
+  // Direct Jikan (MyAnimeList) API
+  // ---------------------------------------------------------------------------
+  // The catalog's Trending + Details screens call Jikan **directly** from the
+  // app (see JikanRemoteDataSource). Jikan is public and needs no key, so this
+  // keeps the catalog working even when the backend is hosted somewhere that
+  // blocks outbound requests (e.g. InfinityFree). The backend's own catalog
+  // proxy (`/anime/trending`, `/anime/details/{id}`) remains available for
+  // hosts that allow outbound cURL.
+  static const String jikanBaseUrl = 'https://api.jikan.moe/v4';
+  static const String jikanTopAnime = '/top/anime';
+
+  /// Full details for one title on Jikan: `/anime/{id}/full`.
+  static String jikanAnimeFull(String id) => '/anime/$id/full';
+
+  // ---------------------------------------------------------------------------
+  // Catalog endpoints (custom backend)
   // ---------------------------------------------------------------------------
   static const String latestEpisodes = '/episodes/latest';
 
-  /// Trending / popular titles for the home screen. Backend proxies + caches
-  /// the Jikan (MyAnimeList) API. Maps to `GET /api/anime/trending`.
+  /// Backend Jikan proxy (used only when the backend host allows outbound
+  /// cURL). The app currently sources trending from Jikan directly instead.
   static const String trending = '/anime/trending';
   static const String categories = '/categories';
 
-  /// Details for a single anime: `GET /api/anime/details/{id}`.
-  ///
-  /// Backend proxies + caches Jikan's full-details endpoint.
+  /// Backend details proxy: `GET /api/anime/details/{id}` (outbound-capable
+  /// hosts only). The app currently sources details from Jikan directly.
   static String animeDetails(String animeId) => '/anime/details/$animeId';
 
   /// Episode list for an anime: `/anime/{id}/episodes`.

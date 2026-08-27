@@ -75,6 +75,7 @@ backend/
 │
 ├── api/
 │   ├── index.php              # Front controller / router (clean URLs)
+│   ├── health.php             # GET diagnostics (PHP/DB/cURL/outbound)
 │   ├── auth/
 │   │   ├── register.php       # POST  create user, hash password, issue JWT
 │   │   ├── login.php          # POST  verify credentials, issue JWT
@@ -111,6 +112,7 @@ Auth success payload: `{ "token": "<jwt>", "user": { "id", "name", "email" } }`.
 
 | Method | Path                        | Auth | Body |
 | ------ | --------------------------- | ---- | ---- |
+| GET    | `/api/health`               | —    | — (env diagnostics: PHP/DB/cURL/outbound) |
 | POST   | `/api/auth/register`        | —    | `{ name, email, password }` |
 | POST   | `/api/auth/login`           | —    | `{ email, password }` |
 | POST   | `/api/auth/logout`          | ✔    | — |
@@ -126,6 +128,19 @@ Auth success payload: `{ "token": "<jwt>", "user": { "id", "name", "email" } }`.
 | POST   | `/api/history`              | ✔    | `{ anime_id, episode_id, playback_time }` |
 
 `✔` = requires `Authorization: Bearer <jwt>`.
+
+### Hosting note (outbound requests)
+
+Some free hosts (e.g. **InfinityFree**) block outbound cURL, so the backend's
+Jikan proxy and the `ScraperService` can't reach the internet there — but
+auth/favorites/history (PHP + MySQL only) work fine. To cope:
+
+- The **app calls Jikan directly** for Trending/Details (see the Flutter
+  `JikanRemoteDataSource`), so the catalog works regardless of the backend host.
+- Deploy the backend on an outbound-capable free host (e.g. **Alwaysdata**) to
+  light up the backend Jikan proxy and real scraping.
+- Hit **`GET /api/health`** right after deploying to see exactly what the host
+  allows (PHP version, DB connection, cURL, and a live outbound ping to Jikan).
 
 ### Catalog & scraping
 
