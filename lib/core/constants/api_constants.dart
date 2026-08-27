@@ -8,8 +8,9 @@ class ApiConstants {
   /// Base URL of the custom backend.
   ///
   /// The backend performs on-the-fly scraping and exposes catalog + streaming
-  /// endpoints. Replace with your deployed host.
-  static const String baseUrl = 'https://api.animewatcher.example.com/v1';
+  /// endpoints. Points at the deployed Alwaysdata host; all endpoints are
+  /// served under `/api` by the backend's front-controller router.
+  static const String baseUrl = 'https://animewatcher.alwaysdata.net/api';
 
   // ---------------------------------------------------------------------------
   // Timeouts
