@@ -12,6 +12,7 @@ import '../../catalog/providers/catalog_providers.dart';
 import '../../details/presentation/anime_details_screen.dart';
 import '../../favorites/presentation/favorites_screen.dart';
 import '../../player/presentation/video_player_screen.dart';
+import '../../search/presentation/search_screen.dart';
 import 'widgets/horizontal_anime_list.dart';
 import 'widgets/section_header.dart';
 
@@ -32,6 +33,13 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('AnimeWatcher'),
         actions: [
+          IconButton(
+            tooltip: 'Search',
+            icon: const Icon(Icons.search),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SearchScreen()),
+            ),
+          ),
           IconButton(
             tooltip: 'Favorites',
             icon: const Icon(Icons.favorite_border),

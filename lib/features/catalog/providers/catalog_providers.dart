@@ -1,18 +1,11 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/providers/core_providers.dart';
 import '../../../shared/models/anime.dart';
 import '../../../shared/models/content_language.dart';
 import '../../../shared/models/episode.dart';
-import '../data/catalog_remote_datasource.dart';
 import '../data/catalog_repository.dart';
 import '../data/jikan_remote_datasource.dart';
-
-/// Wires the catalog datasources + repository into the provider graph.
-final _catalogDataSourceProvider = Provider<CatalogRemoteDataSource>(
-  (ref) => CatalogRemoteDataSource(ref.watch(dioClientProvider)),
-);
 
 /// Direct-to-Jikan datasource (its own Dio, no backend base URL / JWT).
 final _jikanDataSourceProvider = Provider<JikanRemoteDataSource>(
@@ -20,10 +13,7 @@ final _jikanDataSourceProvider = Provider<JikanRemoteDataSource>(
 );
 
 final catalogRepositoryProvider = Provider<CatalogRepository>(
-  (ref) => CatalogRepository(
-    ref.watch(_catalogDataSourceProvider),
-    ref.watch(_jikanDataSourceProvider),
-  ),
+  (ref) => CatalogRepository(ref.watch(_jikanDataSourceProvider)),
 );
 
 // --- Home feeds --------------------------------------------------------------

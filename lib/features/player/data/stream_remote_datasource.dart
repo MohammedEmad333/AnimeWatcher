@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_constants.dart';
-import '../../../core/error/exceptions.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../shared/models/stream_link.dart';
 
@@ -20,7 +19,12 @@ class StreamRemoteDataSource {
   /// Requests the backend to scrape and return a direct video link for
   /// [episodeId] in [languageCode] (`ar` / `en`). Optionally cancelable via
   /// [cancelToken] (e.g. when the user leaves the player before it resolves).
-  Future<StreamLink> resolveStreamLink(
+  ///
+  /// Returns `null` when the endpoint responds successfully but the episode has
+  /// **no playable sources** — a normal, expected outcome the player renders as
+  /// a clean "No streaming sources available" state rather than an error. Real
+  /// failures (network/timeout/5xx) still throw the app's typed exceptions.
+  Future<StreamLink?> resolveStreamLink(
     String episodeId, {
     String languageCode = 'ar',
     CancelToken? cancelToken,
@@ -37,7 +41,7 @@ class StreamRemoteDataSource {
 
     final sources = payload is Map ? payload['sources'] : payload;
     if (sources is! List || sources.isEmpty) {
-      throw const ServerException('No playable sources were returned.');
+      return null; // resolved fine, just nothing to play
     }
 
     final first = sources.firstWhere(
@@ -45,7 +49,7 @@ class StreamRemoteDataSource {
       orElse: () => null,
     );
     if (first is! Map) {
-      throw const ServerException('No playable sources were returned.');
+      return null; // every entry was blank/urless → treat as no sources
     }
 
     return StreamLink.fromJson(first.cast<String, dynamic>());

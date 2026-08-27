@@ -129,4 +129,118 @@ void main() {
       expect(await ds.getCategories(), isEmpty);
     });
   });
+
+  group('JikanRemoteDataSource.getEpisodes', () {
+    const episodesJson = '''
+{
+  "data": [
+    {
+      "mal_id": 1,
+      "title": "The Journey's End",
+      "aired": "2023-09-29T00:00:00+00:00",
+      "filler": false,
+      "recap": false
+    },
+    {
+      "mal_id": 2,
+      "title": "It Didn't Have to Be Magic",
+      "aired": null,
+      "filler": true,
+      "recap": false
+    }
+  ]
+}
+''';
+
+    test('maps titles, air dates, filler flags and stable ids', () async {
+      final ds = _dataSource((_) => episodesJson);
+
+      final episodes = await ds.getEpisodes('52991');
+
+      expect(episodes, hasLength(2));
+
+      final first = episodes.first;
+      expect(first.id, '52991_1');
+      expect(first.animeId, '52991');
+      expect(first.number, 1);
+      expect(first.title, "The Journey's End");
+      expect(first.airedLabel, 'Sep 29, 2023');
+      expect(first.isFiller, isFalse);
+
+      final second = episodes[1];
+      expect(second.airedLabel, ''); // null aired → blank, not a crash
+      expect(second.isFiller, isTrue);
+    });
+  });
+
+  group('JikanRemoteDataSource.getGenres', () {
+    test('maps genres to id + name, dropping incomplete rows', () async {
+      const genresJson = '''
+{
+  "data": [
+    { "mal_id": 1, "name": "Action", "count": 100 },
+    { "mal_id": 10, "name": "Fantasy", "count": 80 },
+    { "mal_id": 99, "name": "" }
+  ]
+}
+''';
+      final ds = _dataSource((_) => genresJson);
+
+      final genres = await ds.getGenres();
+
+      expect(genres.map((g) => g.id), ['1', '10']);
+      expect(genres.first.name, 'Action');
+      expect(genres.first.count, 100);
+    });
+  });
+
+  group('JikanRemoteDataSource.searchAnime', () {
+    const searchJson = '''
+{
+  "data": [
+    {
+      "mal_id": 52991,
+      "title": "Sousou no Frieren",
+      "title_english": "Frieren: Beyond Journey's End",
+      "images": { "jpg": { "large_image_url": "https://img/frieren.jpg" } },
+      "score": 9.3,
+      "episodes": 28,
+      "genres": [ { "name": "Adventure" } ]
+    }
+  ]
+}
+''';
+
+    test('maps search results into Anime', () async {
+      final ds = _dataSource((_) => searchJson);
+
+      final results = await ds.searchAnime(query: 'frieren');
+
+      expect(results, hasLength(1));
+      expect(results.first.id, '52991');
+      expect(results.first.title, "Frieren: Beyond Journey's End");
+      expect(results.first.rating, 9.3);
+      expect(results.first.genres, ['Adventure']);
+    });
+
+    test('short-circuits to empty with no query and no genre (no network)',
+        () async {
+      var called = false;
+      final ds = _dataSource((_) {
+        called = true;
+        return '{"data":[]}';
+      });
+
+      expect(await ds.searchAnime(), isEmpty);
+      expect(called, isFalse); // never hit the adapter
+    });
+
+    test('searches by genre alone (no query)', () async {
+      final ds = _dataSource((_) => searchJson);
+
+      final results = await ds.searchAnime(genreId: '2');
+
+      expect(results, hasLength(1));
+    });
+  });
 }

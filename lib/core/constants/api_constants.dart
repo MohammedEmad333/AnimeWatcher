@@ -54,6 +54,14 @@ class ApiConstants {
   /// Full details for one title on Jikan: `/anime/{id}/full`.
   static String jikanAnimeFull(String id) => '/anime/$id/full';
 
+  /// Per-episode metadata for a title (`GET /anime/{id}/episodes`): numbered
+  /// list with titles, air dates and filler flags. Used to enrich the Details
+  /// screen's episode list.
+  static String jikanAnimeEpisodes(String id) => '/anime/$id/episodes';
+
+  /// Anime search (`GET /anime?q=..&genres=..`). Powers the Search screen.
+  static const String jikanAnimeSearch = '/anime';
+
   // ---------------------------------------------------------------------------
   // Catalog endpoints (custom backend)
   // ---------------------------------------------------------------------------

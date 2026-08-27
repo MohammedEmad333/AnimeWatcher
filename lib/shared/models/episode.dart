@@ -13,6 +13,9 @@ class Episode extends Equatable {
     required this.title,
     this.thumbnailUrl = '',
     this.durationLabel = '',
+    this.airedLabel = '',
+    this.synopsis = '',
+    this.isFiller = false,
   });
 
   final String id;
@@ -26,6 +29,16 @@ class Episode extends Equatable {
   /// Human-readable duration, e.g. "24 min".
   final String durationLabel;
 
+  /// Human-readable air date, e.g. "Sep 29, 2023" (empty when unknown).
+  final String airedLabel;
+
+  /// Episode synopsis, when a metadata source provides one (often empty for
+  /// bulk episode listings).
+  final String synopsis;
+
+  /// Whether the metadata source flags this as a filler episode.
+  final bool isFiller;
+
   factory Episode.fromJson(Map<String, dynamic> json) {
     return Episode(
       id: json['id'].toString(),
@@ -38,6 +51,9 @@ class Episode extends Equatable {
           (json['thumbnail_url'] ?? json['thumbnailUrl'] ?? '') as String,
       durationLabel:
           (json['duration_label'] ?? json['durationLabel'] ?? '') as String,
+      airedLabel: (json['aired_label'] ?? json['airedLabel'] ?? '') as String,
+      synopsis: (json['synopsis'] ?? '') as String,
+      isFiller: json['is_filler'] == true || json['filler'] == true,
     );
   }
 

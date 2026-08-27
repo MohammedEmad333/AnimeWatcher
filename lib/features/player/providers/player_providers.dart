@@ -88,6 +88,13 @@ class PlayerController extends StateNotifier<PlayerState> {
       );
       if (_disposed) return;
 
+      // Resolved successfully but nothing is playable → dedicated empty state
+      // (with Retry), kept distinct from the red error state below.
+      if (link == null) {
+        state = const PlayerNoSources();
+        return;
+      }
+
       // Best-effort resume lookup; never blocks playback on failure.
       _resumeSeconds = await _fetchResume();
       if (_disposed) return;

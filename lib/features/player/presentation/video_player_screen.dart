@@ -44,6 +44,7 @@ class VideoPlayerScreen extends ConsumerWidget {
               PlayerLoading() => const _PlayerLoadingView(),
               PlayerReady(:final controller) =>
                 BetterPlayer(controller: controller),
+              PlayerNoSources() => _NoSourcesView(onRetry: controller.retry),
               PlayerError(:final failure) => _PlayerErrorView(
                   failure: failure,
                   onRetry: controller.retry,
@@ -78,6 +79,55 @@ class _PlayerLoadingView extends StatelessWidget {
           Text(
             'This can take a few seconds.',
             style: TextStyle(color: Colors.white38, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Neutral empty state shown when the episode resolved but has no playable
+/// sources. Deliberately calmer than [_PlayerErrorView] (no red error icon):
+/// it's an expected outcome, and a Retry lets the user try again later.
+class _NoSourcesView extends StatelessWidget {
+  const _NoSourcesView({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black,
+      padding: const EdgeInsets.all(24),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.videocam_off_outlined,
+              color: Colors.white54, size: 52),
+          const SizedBox(height: 16),
+          const Text(
+            'No streaming sources available',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'This episode has no playable servers right now. '
+            'Please check back later.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Retry'),
+            style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
           ),
         ],
       ),

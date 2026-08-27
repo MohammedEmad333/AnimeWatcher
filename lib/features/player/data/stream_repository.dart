@@ -10,7 +10,12 @@ class StreamRepository {
 
   final StreamRemoteDataSource _remote;
 
-  Future<StreamLink> resolveStreamLink(
+  /// Resolves a playable link, or `null` when the episode has no sources.
+  ///
+  /// Genuine failures are rethrown as typed [Failure]s; a successful resolve
+  /// that yields no (or only blank) sources returns `null` so the player can
+  /// show a dedicated "No streaming sources available" state.
+  Future<StreamLink?> resolveStreamLink(
     String episodeId, {
     String languageCode = 'ar',
     CancelToken? cancelToken,
@@ -21,8 +26,8 @@ class StreamRepository {
         languageCode: languageCode,
         cancelToken: cancelToken,
       );
-      if (link.url.isEmpty) {
-        throw const ServerFailure('The stream link could not be resolved.');
+      if (link == null || link.url.isEmpty) {
+        return null; // no playable source — not an error
       }
       return link;
     } on Failure {
