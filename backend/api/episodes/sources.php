@@ -29,7 +29,7 @@ require_once dirname(__DIR__, 2) . '/src/ScraperService.php';
 Response::requireMethod('GET');
 
 $episodeId = trim((string) ($_GET['episode_id'] ?? ''));
-if ($episodeId === '' || strlen($episodeId) > 64) {
+if ($episodeId === '' || strlen($episodeId) > 200) {
     Response::error('A valid episode_id is required.', 422);
 }
 
