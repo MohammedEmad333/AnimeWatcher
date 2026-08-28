@@ -28,7 +28,8 @@ class StreamRepository {
     CancelToken? cancelToken,
   }) async {
     try {
-      if (episodeId.contains('|')) {
+      // TEMP: reveal the real episode id on-screen
+      throw ServerFailure('episode.id = "$episodeId"');
         final parts = episodeId.split('|');
         final slug = parts[0].trim();
         final number = int.tryParse(parts.length > 1 ? parts[1].trim() : '');
